@@ -710,41 +710,79 @@ class SecurityThreatDetectedEvent extends BaseEvent
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SECTION 8: DEPENDENCY INJECTION CONTAINER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * Service Container (Dependency Injection Container)
+ * Implements Inversion of Control
+ */
+class ServiceContainer
+{
+    private array $services = [];
+    private array $factories = [];
+    private array $instances = [];
+
+    /**
+     * Register a service factory
+     */
+    public function register(string $name, callable $factory): void
+    {
+        $this->factories[$name] = $factory;
+    }
+
+    /**
+     * Register a singleton service
+     */
+    public function singleton(string $name, callable $factory): void
+    {
+        $this->register($name, function() use ($name, $factory) {
+            if (!isset($this->instances[$name])) {
+                $this->instances[$name] = $factory($this);
+            }
+            return $this->instances[$name];
+        });
+    }
+
+    /**
+     * Register an existing instance
+     */
+    public function instance(string $name, $instance): void
+    {
+        $this->instances[$name] = $instance;
+    }
+
+    /**
+     * Get a service from the container
+     */
+    public function get(string $name)
+    {
+        if (isset($this->instances[$name])) {
+            return $this->instances[$name];
+        }
+
+        if (!isset($this->factories[$name])) {
+            throw new \RuntimeException("Service not found: {$name}");
+        }
+
+        return $this->factories[$name]($this);
+    }
+
+    /**
+     * Check if service exists
+     */
+    public function has(string $name): bool
+    {
+        return isset($this->factories[$name]) || isset($this->instances[$name]);
+    }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // SECTION 5: INFRASTRUCTURE IMPLEMENTATIONS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-// NOTE: The ServiceContainer and BasicTemplateRenderer are still basic placeholders.
-// In a real-world application, these would be more robust.
-
-class ServiceContainer
-{
-    private array $instances = [];
-    private array $bindings = [];
-
-    public function instance(string $key, $instance): void
-    {
-        $this->instances[$key] = $instance;
-    }
-
-    public function singleton(string $key, callable $resolver): void
-    {
-        $this->bindings[$key] = $resolver;
-    }
-
-    public function get(string $key)
-    {
-        if (isset($this->instances[$key])) {
-            return $this->instances[$key];
-        }
-
-        if (isset($this->bindings[$key])) {
-            $this->instances[$key] = $this->bindings[$key]($this);
-            return $this->instances[$key];
-        }
-
-        throw new \Exception("Service not found: {$key}");
-    }
-}
+// NOTE: The BasicTemplateRenderer is still a basic placeholder.
+// In a real-world application, it would be more robust.
 
 /**
  * JSON Configuration Manager
