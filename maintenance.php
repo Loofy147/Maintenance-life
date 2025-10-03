@@ -660,9 +660,51 @@ class MaintenanceEnabledEvent extends BaseEvent
             'session_id' => $session->getId(),
             'reason' => $session->getReason(),
             'period' => [
-                'start' => $session->getPeriod()->getStart()->format(\DateTimeInterface::ISO8601),
-                'end' => $session->getPeriod()->getEnd()->format(\DateTimeInterface::ISO8601),
-            ],
+                'start' => $session->getPeriod()->getStart()->format('c'),
+                'end' => $session->getPeriod()->getEnd()->format('c'),
+            ]
+        ]);
+    }
+}
+
+/**
+ * Maintenance Disabled Event
+ */
+class MaintenanceDisabledEvent extends BaseEvent
+{
+    public function __construct(MaintenanceSession $session)
+    {
+        parent::__construct('maintenance.disabled', [
+            'session_id' => $session->getId(),
+            'completed_at' => (new \DateTimeImmutable())->format('c')
+        ]);
+    }
+}
+
+/**
+ * Request Blocked Event
+ */
+class RequestBlockedEvent extends BaseEvent
+{
+    public function __construct(IPAddress $ipAddress, string $reason)
+    {
+        parent::__construct('request.blocked', [
+            'ip' => $ipAddress->toString(),
+            'reason' => $reason
+        ]);
+    }
+}
+
+/**
+ * Security Threat Detected Event
+ */
+class SecurityThreatDetectedEvent extends BaseEvent
+{
+    public function __construct(string $threatType, array $details)
+    {
+        parent::__construct('security.threat_detected', [
+            'threat_type' => $threatType,
+            'details' => $details
         ]);
     }
 }
@@ -743,7 +785,7 @@ class Application
 
         // Event Dispatcher
         $this->container->singleton(EventDispatcherInterface::class, function($c) {
-            return new EventDispatcher();
+            return new EventDispatcher($c->get('logger'));
         });
 
         // Template Renderer
@@ -810,12 +852,11 @@ class Application
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// SECTION 10: INFRASTRUCTURE & PLACEHOLDER IMPLEMENTATIONS
+// SECTION 5: INFRASTRUCTURE IMPLEMENTATIONS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-// NOTE: These are basic implementations for demonstration purposes.
-// In a real-world application, these would be more robust and likely
-// come from established libraries (e.g., Monolog, Pimple/PHP-DI, Flysystem).
+// NOTE: The ServiceContainer and BasicTemplateRenderer are still basic placeholders.
+// In a real-world application, these would be more robust.
 
 class ServiceContainer
 {
@@ -847,41 +888,51 @@ class ServiceContainer
     }
 }
 
+/**
+ * JSON Configuration Manager
+ * Implements configuration management with file persistence
+ */
 class JsonConfigurationManager implements ConfigurationManagerInterface
 {
     private array $config = [];
-    private string $path;
+    private string $filePath;
 
-    public function __construct(string $path)
+    public function __construct(string $filePath)
     {
-        $this->path = $path;
-        $this->load($path);
+        $this->filePath = $filePath;
+        if (file_exists($filePath)) {
+            $this->load($filePath);
+        }
     }
 
     public function get(string $key, $default = null)
     {
         $keys = explode('.', $key);
         $value = $this->config;
+
         foreach ($keys as $k) {
             if (!isset($value[$k])) {
                 return $default;
             }
             $value = $value[$k];
         }
+
         return $value;
     }
 
     public function set(string $key, $value): void
     {
         $keys = explode('.', $key);
-        $temp = &$this->config;
+        $config = &$this->config;
+
         foreach ($keys as $k) {
-            if (!isset($temp[$k]) || !is_array($temp[$k])) {
-                $temp[$k] = [];
+            if (!isset($config[$k])) {
+                $config[$k] = [];
             }
-            $temp = &$temp[$k];
+            $config = &$config[$k];
         }
-        $temp = $value;
+
+        $config = $value;
     }
 
     public function has(string $key): bool
@@ -891,14 +942,27 @@ class JsonConfigurationManager implements ConfigurationManagerInterface
 
     public function load(string $path): void
     {
-        if (file_exists($path)) {
-            $this->config = json_decode(file_get_contents($path), true) ?: [];
+        if (!file_exists($path)) {
+            throw new \RuntimeException("Configuration file not found: {$path}");
         }
+
+        $content = file_get_contents($path);
+        $config = json_decode($content, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \RuntimeException('Invalid JSON in configuration file: ' . json_last_error_msg());
+        }
+
+        $this->config = $config;
     }
 
     public function save(string $path): void
     {
-        file_put_contents($path, json_encode($this->config, JSON_PRETTY_PRINT));
+        $content = json_encode($this->config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+        if (file_put_contents($path, $content) === false) {
+            throw new \RuntimeException("Failed to save configuration to: {$path}");
+        }
     }
 
     public function all(): array
@@ -907,68 +971,49 @@ class JsonConfigurationManager implements ConfigurationManagerInterface
     }
 }
 
-class FileLogger implements LoggerInterface
-{
-    private string $logFile;
-
-    public function __construct(string $logFile)
-    {
-        $this->logFile = $logFile;
-    }
-
-    public function log(string $level, string $message, array $context = []): void
-    {
-        $logEntry = sprintf(
-            "[%s] [%s] %s %s\n",
-            date('Y-m-d H:i:s'),
-            strtoupper($level),
-            $message,
-            json_encode($context)
-        );
-        file_put_contents($this->logFile, $logEntry, FILE_APPEND);
-    }
-
-    public function emergency(string $message, array $context = []): void { $this->log('emergency', $message, $context); }
-    public function alert(string $message, array $context = []): void { $this->log('alert', $message, $context); }
-    public function critical(string $message, array $context = []): void { $this->log('critical', $message, $context); }
-    public function error(string $message, array $context = []): void { $this->log('error', $message, $context); }
-    public function warning(string $message, array $context = []): void { $this->log('warning', $message, $context); }
-    public function notice(string $message, array $context = []): void { $this->log('notice', $message, $context); }
-    public function info(string $message, array $context = []): void { $this->log('info', $message, $context); }
-    public function debug(string $message, array $context = []): void { $this->log('debug', $message, $context); }
-}
-
+/**
+ * File System Cache Implementation
+ */
 class FileSystemCache implements CacheInterface
 {
     private string $cacheDir;
 
     public function __construct(string $cacheDir)
     {
-        $this->cacheDir = $cacheDir;
+        $this->cacheDir = rtrim($cacheDir, '/');
+
+        if (!is_dir($this->cacheDir)) {
+            mkdir($this->cacheDir, 0755, true);
+        }
     }
 
     public function get(string $key, $default = null)
     {
-        $path = $this->getPath($key);
-        if (!file_exists($path)) {
+        $file = $this->getCacheFile($key);
+
+        if (!file_exists($file)) {
             return $default;
         }
-        $data = unserialize(file_get_contents($path));
-        if ($data['expires'] !== null && $data['expires'] < time()) {
+
+        $data = unserialize(file_get_contents($file));
+
+        if ($data['expires_at'] < time()) {
             $this->delete($key);
             return $default;
         }
+
         return $data['value'];
     }
 
     public function set(string $key, $value, int $ttl = 3600): bool
     {
-        $path = $this->getPath($key);
+        $file = $this->getCacheFile($key);
         $data = [
             'value' => $value,
-            'expires' => $ttl ? time() + $ttl : null,
+            'expires_at' => time() + $ttl
         ];
-        return file_put_contents($path, serialize($data)) !== false;
+
+        return file_put_contents($file, serialize($data), LOCK_EX) !== false;
     }
 
     public function has(string $key): bool
@@ -978,59 +1023,166 @@ class FileSystemCache implements CacheInterface
 
     public function delete(string $key): bool
     {
-        $path = $this->getPath($key);
-        return file_exists($path) && unlink($path);
+        $file = $this->getCacheFile($key);
+
+        if (file_exists($file)) {
+            return unlink($file);
+        }
+
+        return true;
     }
 
     public function clear(): bool
     {
         $files = glob($this->cacheDir . '/*.cache');
+
         foreach ($files as $file) {
-            if (is_file($file)) {
-                unlink($file);
+            if (!unlink($file)) {
+                return false;
             }
         }
+
         return true;
     }
 
-    private function getPath(string $key): string
+    private function getCacheFile(string $key): string
     {
-        return $this->cacheDir . '/' . sha1($key) . '.cache';
+        $hash = md5($key);
+        return $this->cacheDir . '/' . $hash . '.cache';
     }
 }
 
+/**
+ * File Logger Implementation (PSR-3 compatible)
+ */
+class FileLogger implements LoggerInterface
+{
+    private string $logFile;
+    private string $dateFormat = 'Y-m-d H:i:s';
+
+    public function __construct(string $logFile)
+    {
+        $this->logFile = $logFile;
+
+        $dir = dirname($logFile);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+    }
+
+    public function emergency(string $message, array $context = []): void
+    {
+        $this->log('EMERGENCY', $message, $context);
+    }
+
+    public function alert(string $message, array $context = []): void
+    {
+        $this->log('ALERT', $message, $context);
+    }
+
+    public function critical(string $message, array $context = []): void
+    {
+        $this->log('CRITICAL', $message, $context);
+    }
+
+    public function error(string $message, array $context = []): void
+    {
+        $this->log('ERROR', $message, $context);
+    }
+
+    public function warning(string $message, array $context = []): void
+    {
+        $this->log('WARNING', $message, $context);
+    }
+
+    public function notice(string $message, array $context = []): void
+    {
+        $this->log('NOTICE', $message, $context);
+    }
+
+    public function info(string $message, array $context = []): void
+    {
+        $this->log('INFO', $message, $context);
+    }
+
+    public function debug(string $message, array $context = []): void
+    {
+        $this->log('DEBUG', $message, $context);
+    }
+
+    public function log(string $level, string $message, array $context = []): void
+    {
+        $timestamp = date($this->dateFormat);
+        $contextStr = empty($context) ? '' : ' ' . json_encode($context);
+        $logEntry = "[{$timestamp}] [{$level}] {$message}{$contextStr}" . PHP_EOL;
+
+        file_put_contents($this->logFile, $logEntry, FILE_APPEND | LOCK_EX);
+    }
+}
+
+/**
+ * Event Dispatcher Implementation
+ */
 class EventDispatcher implements EventDispatcherInterface
 {
     private array $listeners = [];
+    private LoggerInterface $logger;
+
+    public function __construct(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+    }
 
     public function dispatch(EventInterface $event): void
     {
-        foreach ($this->getListenersForEvent($event) as $listener) {
+        $eventName = $event->getName();
+
+        $this->logger->debug("Dispatching event: {$eventName}", $event->getData());
+
+        if (!isset($this->listeners[$eventName])) {
+            return;
+        }
+
+        // Sort listeners by priority (higher first)
+        uasort($this->listeners[$eventName], function($a, $b) {
+            return $b['priority'] <=> $a['priority'];
+        });
+
+        foreach ($this->listeners[$eventName] as $listener) {
             if ($event->isPropagationStopped()) {
                 break;
             }
-            $listener($event);
+
+            try {
+                call_user_func($listener['callback'], $event);
+            } catch (\Exception $e) {
+                $this->logger->error("Error in event listener", [
+                    'event' => $eventName,
+                    'error' => $e->getMessage()
+                ]);
+            }
         }
     }
 
     public function addListener(string $eventName, callable $listener, int $priority = 0): void
     {
-        $this->listeners[$eventName][$priority][] = $listener;
+        $this->listeners[$eventName][] = [
+            'callback' => $listener,
+            'priority' => $priority
+        ];
     }
 
     public function removeListener(string $eventName, callable $listener): void
     {
-        // Basic implementation, a real one would be more complex
-    }
-
-    private function getListenersForEvent(EventInterface $event): iterable
-    {
-        $eventName = $event->getName();
-        if (empty($this->listeners[$eventName])) {
-            return [];
+        if (!isset($this->listeners[$eventName])) {
+            return;
         }
-        krsort($this->listeners[$eventName]);
-        return call_user_func_array('array_merge', $this->listeners[$eventName]);
+
+        foreach ($this->listeners[$eventName] as $key => $listenerData) {
+            if ($listenerData['callback'] === $listener) {
+                unset($this->listeners[$eventName][$key]);
+            }
+        }
     }
 }
 
@@ -1059,4 +1211,119 @@ class BasicTemplateRenderer implements TemplateRendererInterface
     {
         return file_exists($this->templateDir . '/' . $template);
     }
+}
+
+/**
+ * SQLite Repository Base Class
+ */
+abstract class SQLiteRepository implements RepositoryInterface
+{
+    protected \PDO $db;
+    protected string $table;
+    protected LoggerInterface $logger;
+
+    public function __construct(\PDO $db, string $table, LoggerInterface $logger)
+    {
+        $this->db = $db;
+        $this->table = $table;
+        $this->logger = $logger;
+    }
+
+    public function find(int $id)
+    {
+        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        $data = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        return $data ? $this->hydrate($data) : null;
+    }
+
+    public function findAll(): array
+    {
+        $stmt = $this->db->query("SELECT * FROM {$this->table}");
+        $results = [];
+
+        while ($data = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            $results[] = $this->hydrate($data);
+        }
+
+        return $results;
+    }
+
+    public function findBy(array $criteria): array
+    {
+        $conditions = [];
+        $params = [];
+
+        foreach ($criteria as $key => $value) {
+            $conditions[] = "{$key} = :{$key}";
+            $params[$key] = $value;
+        }
+
+        $where = implode(' AND ', $conditions);
+        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE {$where}");
+        $stmt->execute($params);
+
+        $results = [];
+        while ($data = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            $results[] = $this->hydrate($data);
+        }
+
+        return $results;
+    }
+
+    public function save($entity): void
+    {
+        $data = $this->extract($entity);
+
+        if (isset($data['id']) && $data['id']) {
+            $this->update($data);
+        } else {
+            $this->insert($data);
+        }
+    }
+
+    public function delete($entity): void
+    {
+        $data = $this->extract($entity);
+
+        if (!isset($data['id'])) {
+            throw new \LogicException('Cannot delete entity without ID');
+        }
+
+        $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = :id");
+        $stmt->execute(['id' => $data['id']]);
+    }
+
+    protected function insert(array $data): void
+    {
+        unset($data['id']);
+
+        $columns = implode(', ', array_keys($data));
+        $placeholders = ':' . implode(', :', array_keys($data));
+
+        $sql = "INSERT INTO {$this->table} ({$columns}) VALUES ({$placeholders})";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($data);
+    }
+
+    protected function update(array $data): void
+    {
+        $id = $data['id'];
+        unset($data['id']);
+
+        $sets = [];
+        foreach (array_keys($data) as $key) {
+            $sets[] = "{$key} = :{$key}";
+        }
+
+        $sql = "UPDATE {$this->table} SET " . implode(', ', $sets) . " WHERE id = :id";
+        $data['id'] = $id;
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($data);
+    }
+
+    abstract protected function hydrate(array $data);
+    abstract protected function extract($entity): array;
 }
