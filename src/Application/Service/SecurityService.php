@@ -3,22 +3,22 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Application\Service;
 
+use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Domain\Event\SecurityThreatDetectedEvent;
 use MaintenancePro\Application\Event\EventDispatcherInterface;
 use MaintenancePro\Infrastructure\Cache\CacheInterface;
-use MaintenancePro\Infrastructure\Config\ConfigurationManagerInterface;
 use MaintenancePro\Infrastructure\Logger\LoggerInterface;
 
 class SecurityService implements SecurityServiceInterface
 {
-    private ConfigurationManagerInterface $config;
+    private ConfigurationInterface $config;
     private CacheInterface $cache;
     private LoggerInterface $logger;
     private EventDispatcherInterface $eventDispatcher;
     private array $blockedIPs = [];
 
     public function __construct(
-        ConfigurationManagerInterface $config,
+        ConfigurationInterface $config,
         CacheInterface $cache,
         LoggerInterface $logger,
         EventDispatcherInterface $eventDispatcher

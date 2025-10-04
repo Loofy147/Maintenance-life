@@ -3,19 +3,19 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Application\Service;
 
+use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Domain\ValueObject\IPAddress;
 use MaintenancePro\Infrastructure\Cache\CacheInterface;
-use MaintenancePro\Infrastructure\Config\ConfigurationManagerInterface;
 use MaintenancePro\Infrastructure\Logger\LoggerInterface;
 
 class AccessControlService
 {
-    private ConfigurationManagerInterface $config;
+    private ConfigurationInterface $config;
     private CacheInterface $cache;
     private LoggerInterface $logger;
 
     public function __construct(
-        ConfigurationManagerInterface $config,
+        ConfigurationInterface $config,
         CacheInterface $cache,
         LoggerInterface $logger
     ) {
@@ -61,7 +61,7 @@ class AccessControlService
         if (!in_array($ip, $whitelist, true)) {
             $whitelist[] = $ip;
             $this->config->set('access.whitelist.ips', $whitelist);
-            $this->config->save($this->config->get('system.config_path'));
+            $this->config->save();
 
             $this->logger->info("IP added to whitelist: {$ip}");
         }
@@ -80,7 +80,7 @@ class AccessControlService
             $whitelist = array_values($whitelist);
 
             $this->config->set('access.whitelist.ips', $whitelist);
-            $this->config->save($this->config->get('system.config_path'));
+            $this->config->save();
 
             $this->logger->info("IP removed from whitelist: {$ip}");
         }

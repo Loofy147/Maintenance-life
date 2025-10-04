@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Infrastructure\Cache;
 
-use MaintenancePro\Application\Service\MetricsServiceInterface;
+use MaintenancePro\Domain\Contracts\MetricsInterface;
 
 class FileSystemCache implements CacheInterface
 {
@@ -12,9 +12,9 @@ class FileSystemCache implements CacheInterface
     private int $hits = 0;
     private int $misses = 0;
 
-    private ?MetricsServiceInterface $metrics;
+    private ?MetricsInterface $metrics;
 
-    public function __construct(string $cacheDir, ?MetricsServiceInterface $metrics = null)
+    public function __construct(string $cacheDir, ?MetricsInterface $metrics = null)
     {
         $this->cacheDir = rtrim($cacheDir, '/');
         $this->metrics = $metrics;

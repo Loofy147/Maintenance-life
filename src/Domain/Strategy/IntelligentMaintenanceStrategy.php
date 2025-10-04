@@ -4,19 +4,19 @@ declare(strict_types=1);
 namespace MaintenancePro\Domain\Strategy;
 
 use MaintenancePro\Application\Service\AccessControlService;
-use MaintenancePro\Application\Service\MetricsServiceInterface;
-use MaintenancePro\Infrastructure\Config\ConfigurationManagerInterface;
+use MaintenancePro\Domain\Contracts\MetricsInterface;
+use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 
 class IntelligentMaintenanceStrategy implements MaintenanceStrategyInterface
 {
-    private ConfigurationManagerInterface $config;
+    private ConfigurationInterface $config;
     private AccessControlService $accessControl;
-    private MetricsServiceInterface $metrics;
+    private MetricsInterface $metrics;
 
     public function __construct(
-        ConfigurationManagerInterface $config,
+        ConfigurationInterface $config,
         AccessControlService $accessControl,
-        MetricsServiceInterface $metrics
+        MetricsInterface $metrics
     ) {
         $this->config = $config;
         $this->accessControl = $accessControl;

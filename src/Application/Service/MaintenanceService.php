@@ -9,19 +9,19 @@ use MaintenancePro\Domain\Event\MaintenanceEnabledEvent;
 use MaintenancePro\Domain\Strategy\MaintenanceStrategyInterface;
 use MaintenancePro\Domain\ValueObject\TimePeriod;
 use MaintenancePro\Application\Event\EventDispatcherInterface;
-use MaintenancePro\Infrastructure\Config\ConfigurationManagerInterface;
+use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Infrastructure\Logger\LoggerInterface;
 
 class MaintenanceService
 {
-    private ConfigurationManagerInterface $config;
+    private ConfigurationInterface $config;
     private EventDispatcherInterface $eventDispatcher;
     private LoggerInterface $logger;
     private MaintenanceStrategyInterface $strategy;
     private ?MaintenanceSession $currentSession = null;
 
     public function __construct(
-        ConfigurationManagerInterface $config,
+        ConfigurationInterface $config,
         EventDispatcherInterface $eventDispatcher,
         LoggerInterface $logger,
         MaintenanceStrategyInterface $strategy
@@ -51,7 +51,7 @@ class MaintenanceService
         $this->currentSession = $session;
         $this->config->set('maintenance.enabled', true);
         $this->config->set('maintenance.session_id', $session->getId());
-        $this->config->save($this->config->get('system.config_path'));
+        $this->config->save();
 
         $event = new MaintenanceEnabledEvent($session);
         $this->eventDispatcher->dispatch($event);
@@ -79,7 +79,7 @@ class MaintenanceService
 
         $this->config->set('maintenance.enabled', false);
         $this->config->set('maintenance.session_id', null);
-        $this->config->save($this->config->get('system.config_path'));
+        $this->config->save();
 
         if ($this->currentSession) {
             $event = new MaintenanceDisabledEvent($this->currentSession);
