@@ -21,6 +21,8 @@ use MaintenancePro\Infrastructure\Config\JsonConfigurationManager;
 use MaintenancePro\Infrastructure\Logger\FileLogger;
 use MaintenancePro\Infrastructure\Logger\LoggerInterface;
 use MaintenancePro\Infrastructure\Repository\AnalyticsEventRepository;
+use MaintenancePro\Infrastructure\Service\MetricsService;
+use MaintenancePro\Application\Service\MetricsServiceInterface;
 use MaintenancePro\Presentation\Template\BasicTemplateRenderer;
 use MaintenancePro\Presentation\Template\TemplateRendererInterface;
 
@@ -76,7 +78,10 @@ class Kernel
         });
 
         $this->container->singleton(CacheInterface::class, function($c) use ($paths) {
-            return new FileSystemCache($paths['cache']);
+            return new FileSystemCache(
+                $paths['cache'],
+                $c->get(MetricsServiceInterface::class)
+            );
         });
 
         $this->container->singleton(EventDispatcherInterface::class, function($c) {
@@ -124,8 +129,17 @@ class Kernel
         });
 
         $this->container->singleton(MaintenanceStrategyInterface::class, function($c) {
+            $config = $c->get(ConfigurationManagerInterface::class);
+            if ($config->get('maintenance.strategy') === 'intelligent') {
+                return new IntelligentMaintenanceStrategy(
+                    $config,
+                    $c->get(AccessControlService::class),
+                    $c->get(MetricsServiceInterface::class)
+                );
+            }
+
             return new DefaultMaintenanceStrategy(
-                $c->get(ConfigurationManagerInterface::class),
+                $config,
                 $c->get(AccessControlService::class)
             );
         });
@@ -137,6 +151,10 @@ class Kernel
                 $c->get(LoggerInterface::class),
                 $c->get(MaintenanceStrategyInterface::class)
             );
+        });
+
+        $this->container->singleton(MetricsServiceInterface::class, function($c) {
+            return new MetricsService($c->get(\PDO::class));
         });
     }
 
@@ -153,6 +171,10 @@ class Kernel
 
     public function run(): void
     {
+        $startTime = microtime(true);
+        $metrics = $this->container->get(MetricsServiceInterface::class);
+        $metrics->increment('request.count');
+
         $this->logger->info('Application started.');
 
         $maintenanceService = $this->container->get(MaintenanceService::class);
@@ -175,11 +197,13 @@ class Kernel
                 'title' => $config->get('maintenance.title', 'Site Under Maintenance'),
                 'message' => $config->get('maintenance.message', 'We are currently performing scheduled maintenance. We should be back online shortly.')
             ]);
+            $metrics->timing('request.time', (microtime(true) - $startTime) * 1000);
             exit;
         }
 
         echo "Application is running.";
         $this->logger->info('Application finished.');
+        $metrics->timing('request.time', (microtime(true) - $startTime) * 1000);
     }
 
     public function handleError(int $errno, string $errstr, string $errfile, int $errline): void

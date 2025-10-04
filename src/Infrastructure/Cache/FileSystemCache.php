@@ -3,13 +3,21 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Infrastructure\Cache;
 
+use MaintenancePro\Application\Service\MetricsServiceInterface;
+
 class FileSystemCache implements CacheInterface
 {
     private string $cacheDir;
+    private array $memoryCache = [];
+    private int $hits = 0;
+    private int $misses = 0;
 
-    public function __construct(string $cacheDir)
+    private ?MetricsServiceInterface $metrics;
+
+    public function __construct(string $cacheDir, ?MetricsServiceInterface $metrics = null)
     {
         $this->cacheDir = rtrim($cacheDir, '/');
+        $this->metrics = $metrics;
 
         if (!is_dir($this->cacheDir)) {
             mkdir($this->cacheDir, 0755, true);
@@ -18,9 +26,17 @@ class FileSystemCache implements CacheInterface
 
     public function get(string $key, $default = null)
     {
+        if (isset($this->memoryCache[$key])) {
+            $this->hits++;
+            $this->metrics?->increment('cache.hits');
+            return $this->memoryCache[$key];
+        }
+
         $file = $this->getCacheFile($key);
 
         if (!file_exists($file)) {
+            $this->misses++;
+            $this->metrics?->increment('cache.misses');
             return $default;
         }
 
@@ -28,14 +44,21 @@ class FileSystemCache implements CacheInterface
 
         if ($data['expires_at'] < time()) {
             $this->delete($key);
+            $this->misses++;
+            $this->metrics?->increment('cache.misses');
             return $default;
         }
 
+        $this->hits++;
+        $this->metrics?->increment('cache.hits');
+        $this->memoryCache[$key] = $data['value'];
         return $data['value'];
     }
 
     public function set(string $key, $value, int $ttl = 3600): bool
     {
+        $this->memoryCache[$key] = $value;
+
         $file = $this->getCacheFile($key);
         $data = [
             'value' => $value,
@@ -52,6 +75,8 @@ class FileSystemCache implements CacheInterface
 
     public function delete(string $key): bool
     {
+        unset($this->memoryCache[$key]);
+
         $file = $this->getCacheFile($key);
 
         if (file_exists($file)) {
@@ -63,6 +88,9 @@ class FileSystemCache implements CacheInterface
 
     public function clear(): bool
     {
+        $this->memoryCache = [];
+        $this->hits = 0;
+        $this->misses = 0;
         $files = glob($this->cacheDir . '/*.cache');
 
         foreach ($files as $file) {
@@ -72,6 +100,18 @@ class FileSystemCache implements CacheInterface
         }
 
         return true;
+    }
+
+    public function getStats(): array
+    {
+        $total = $this->hits + $this->misses;
+        return [
+            'hits' => $this->hits,
+            'misses' => $this->misses,
+            'total' => $total,
+            'hit_rate' => $total > 0 ? $this->hits / $total : 0,
+            'memory_size' => count($this->memoryCache),
+        ];
     }
 
     private function getCacheFile(string $key): string
