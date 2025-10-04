@@ -5,8 +5,10 @@ namespace MaintenancePro\Presentation\Web\Controller;
 
 use MaintenancePro\Application\Service\AccessControlService;
 use MaintenancePro\Application\Service\MaintenanceService;
-use MaintenancePro\Application\Service\MetricsServiceInterface;
-use MaintenancePro\Infrastructure\Config\ConfigurationManagerInterface;
+use MaintenancePro\Domain\Contracts\MetricsInterface;
+use MaintenancePro\Infrastructure\CircuitBreaker\CircuitBreakerInterface;
+use MaintenancePro\Domain\Contracts\ConfigurationInterface;
+use MaintenancePro\Infrastructure\Health\HealthCheckAggregator;
 use MaintenancePro\Presentation\Template\TemplateRendererInterface;
 
 class AdminController
@@ -14,21 +16,29 @@ class AdminController
     private TemplateRendererInterface $renderer;
     private MaintenanceService $maintenanceService;
     private AccessControlService $accessControlService;
-    private MetricsServiceInterface $metricsService;
-    private ConfigurationManagerInterface $config;
+    private MetricsInterface $metricsService;
+    private ConfigurationInterface $config;
+
+    private HealthCheckAggregator $healthCheckAggregator;
+
+    private CircuitBreakerInterface $circuitBreaker;
 
     public function __construct(
         TemplateRendererInterface $renderer,
         MaintenanceService $maintenanceService,
         AccessControlService $accessControlService,
-        MetricsServiceInterface $metricsService,
-        ConfigurationManagerInterface $config
+        MetricsInterface $metricsService,
+        ConfigurationInterface $config,
+        HealthCheckAggregator $healthCheckAggregator,
+        CircuitBreakerInterface $circuitBreaker
     ) {
         $this->renderer = $renderer;
         $this->maintenanceService = $maintenanceService;
         $this->accessControlService = $accessControlService;
         $this->metricsService = $metricsService;
         $this->config = $config;
+        $this->healthCheckAggregator = $healthCheckAggregator;
+        $this->circuitBreaker = $circuitBreaker;
     }
 
     public function index(): string
@@ -37,7 +47,9 @@ class AdminController
             'title' => 'Admin Dashboard',
             'maintenance_status' => $this->maintenanceService->isEnabled(),
             'config' => $this->config->all(),
-            'metrics' => $this->metricsService->generateReport(),
+            'metrics' => $this->metricsService->getReport(),
+            'health_report' => $this->healthCheckAggregator->runAll(),
+            'circuit_breaker_status' => $this->circuitBreaker->getStatus('mock_external_service'),
         ];
         return $this->renderer->render('admin/dashboard.phtml', $data);
     }

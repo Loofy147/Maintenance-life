@@ -73,6 +73,54 @@
             </table>
         </div>
 
+        <!-- Circuit Breaker Status -->
+        <div class="card">
+            <h2>Circuit Breaker Status (mock_external_service)</h2>
+            <div class="status <?= $circuit_breaker_status['state'] === 'CLOSED' ? 'disabled' : 'enabled' ?>">
+                STATE: <?= strtoupper($circuit_breaker_status['state']) ?>
+            </div>
+            <table style="margin-top: 1.5rem;">
+                <tr>
+                    <td>Failures</td>
+                    <td><?= $circuit_breaker_status['failures'] ?></td>
+                </tr>
+                <tr>
+                    <td>Last Failure</td>
+                    <td><?= $circuit_breaker_status['last_failure_timestamp'] ? date('Y-m-d H:i:s', $circuit_breaker_status['last_failure_timestamp']) : 'N/A' ?></td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- System Health -->
+        <div class="card">
+            <h2>System Health</h2>
+            <div class="status <?= $health_report['status'] === 'healthy' ? 'disabled' : 'enabled' ?>">
+                OVERALL STATUS: <?= strtoupper($health_report['status']) ?>
+            </div>
+            <table style="margin-top: 1.5rem;">
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Status</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($health_report['checks'] as $name => $check): ?>
+                        <tr>
+                            <td><strong><?= htmlspecialchars($name) ?></strong></td>
+                            <td>
+                                <span class="status <?= $check['healthy'] ? 'disabled' : 'enabled' ?>" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                                    <?= $check['healthy'] ? 'HEALTHY' : 'UNHEALTHY' ?>
+                                </span>
+                            </td>
+                            <td><?= htmlspecialchars($check['message']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
         <!-- Metrics Report -->
         <div class="card">
             <h2>Metrics Report (Last 24 Hours)</h2>

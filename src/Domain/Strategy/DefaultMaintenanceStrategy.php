@@ -5,17 +5,17 @@ namespace MaintenancePro\Domain\Strategy;
 
 use MaintenancePro\Application\Service\AccessControlService;
 use MaintenancePro\Domain\Entity\UserInterface;
+use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Domain\ValueObject\IPAddress;
 use MaintenancePro\Domain\ValueObject\TimePeriod;
-use MaintenancePro\Infrastructure\Config\ConfigurationManagerInterface;
 
 class DefaultMaintenanceStrategy implements MaintenanceStrategyInterface
 {
-    private ConfigurationManagerInterface $config;
+    private ConfigurationInterface $config;
     private AccessControlService $accessControl;
 
     public function __construct(
-        ConfigurationManagerInterface $config,
+        ConfigurationInterface $config,
         AccessControlService $accessControl
     ) {
         $this->config = $config;

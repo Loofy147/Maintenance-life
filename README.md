@@ -1,74 +1,54 @@
-# MaintenancePro: Enterprise Maintenance Mode System
+# MaintenancePro v6.0: Ultimate Enterprise Edition
 
 MaintenancePro is a professional-grade, enterprise-ready maintenance mode system for PHP applications. It is built on modern architectural principles, including SOLID, Domain-Driven Design (DDD), and a clean, layered architecture. This system is designed to be robust, scalable, and easy to maintain, providing a seamless experience for both developers and end-users.
 
-## 🏗️ Architecture
+## 🏆 Key Features
 
-The application is built upon a layered architecture that separates concerns and promotes a clean, maintainable codebase.
-
-*   **Domain Layer:** Contains the core business logic, including entities, value objects, and domain events.
-*   **Application Layer:** Orchestrates the application's use cases and business logic, including services and event dispatching.
-*   **Infrastructure Layer:** Implements external concerns such as caching, logging, and database persistence.
-*   **Presentation Layer:** Handles user interaction, including web (HTTP) and command-line (CLI) interfaces.
-
-## ✨ Features
-
-*   **Adaptive Caching:** A two-layer cache system with a high-speed, in-memory cache for single-request performance, backed by a persistent file cache.
-*   **Telemetry and Metrics:** A comprehensive metrics service that tracks key performance indicators (KPIs), including cache hit/miss rates, request times, and security events.
-*   **Intelligent Maintenance Strategy:** An adaptive strategy that can automatically suggest or enable maintenance mode based on real-time traffic patterns.
-*   **Lazy Loading:** Services are loaded on-demand, ensuring optimal performance by only instantiating what is needed.
-*   **Command-Line Interface (CLI):** A full-featured CLI for managing maintenance mode, whitelisting IPs, and generating performance reports.
-*   **SOLID and DDD Principles:** Built on a foundation of modern software design principles for a robust, maintainable, and scalable application.
+*   **Advanced Health Check System:** A comprehensive, extensible health check system that monitors the status of the database, cache, and disk space, ensuring the application is always running optimally.
+*   **Web-Based Admin Dashboard:** A secure and user-friendly admin dashboard that provides a single pane of glass for managing the maintenance mode system, viewing performance metrics, and monitoring system health.
+*   **Production-Grade Circuit Breaker:** A fault-tolerant circuit breaker that prevents cascading failures by isolating unreliable external services, ensuring the application remains stable and responsive.
+*   **Buffered, High-Performance Metrics:** A sophisticated, buffered metrics service that tracks key performance indicators (KPIs) with minimal performance impact, providing detailed analytics on request times, cache performance, and error rates.
+*   **Schema-Validated Configuration:** A robust configuration manager that uses schema validation to prevent runtime errors caused by misconfiguration, making the system more reliable and easier to manage.
+*   **Two-Layer Adaptive Cache:** A high-performance, two-layer cache system with an in-memory cache for single-request speed, backed by a persistent file cache for data integrity.
+*   **Intelligent Maintenance Strategy:** An adaptive strategy that can be configured to automatically enable maintenance mode based on real-time traffic patterns, applying cost-aware and predictive principles.
+*   **PSR-3 Compatible Logging:** Integrated with Monolog for powerful and flexible logging to multiple channels.
+*   **Full-Featured CLI:** A comprehensive command-line interface for managing all aspects of the system.
 
 ## 🚀 Usage
 
-### Web
+### Web Interface (Admin Dashboard)
 
-To integrate MaintenancePro into your web application, include the following at the beginning of your `public/index.php`:
-
-```php
-require_once __DIR__ . '/../vendor/autoload.php';
-
-use MaintenancePro\Application\Kernel;
-
-$app = new Kernel(dirname(__DIR__));
-$app->run();
-```
-
-If maintenance mode is active, the system will automatically display the maintenance page and halt further execution.
+The admin dashboard provides a user-friendly interface for managing the system. To access it, navigate to `/admin` in your browser. From here, you can:
+*   Enable and disable maintenance mode.
+*   Manage the IP whitelist.
+*   View the real-time system health report.
+*   Monitor performance with the metrics dashboard.
+*   View the current circuit breaker status.
 
 ### Command-Line Interface (CLI)
 
-The CLI provides a set of commands for managing the maintenance mode system.
+The CLI provides a powerful set of commands for managing the system from the command line.
 
-**Enable Maintenance Mode:**
-```bash
-php bin/console enable "Performing a database upgrade" 3600
-```
-
-**Disable Maintenance Mode:**
-```bash
-php bin/console disable
-```
-
-**Check Status:**
-```bash
-php bin/console status
-```
-
-**Whitelist an IP Address:**
-```bash
-php bin/console whitelist:add 192.168.1.100
-```
-
-**Generate a Performance Report:**
-```bash
-php bin/console metrics:report
-```
+| Command | Description |
+| :--- | :--- |
+| `enable [reason] [duration]` | Enable maintenance mode. |
+| `disable` | Disable maintenance mode. |
+| `status` | Check the current maintenance status. |
+| `whitelist:add <ip>` | Add an IP address to the whitelist. |
+| `whitelist:remove <ip>` | Remove an IP address from the whitelist. |
+| `metrics:report` | Generate a performance metrics report. |
+| `health:check` | Run a system health check. |
+| `mock:service-call` | Call the mock external service to test the circuit breaker. |
+| `mock:service-fail` | Set the mock service to a failing state. |
+| `mock:service-succeed` | Set the mock service to a succeeding state. |
 
 ## ⚙️ Configuration
 
-The application's configuration is located in `config/config.json`. Here, you can customize settings for maintenance mode, security, and access control. To use the `IntelligentMaintenanceStrategy`, set the `maintenance.strategy` key to `"intelligent"`.
+The application's configuration is located in `config/config.json`. The configuration is validated against a schema to prevent errors. Key settings include:
+
+*   `maintenance.strategy`: Set to `"intelligent"` to enable the adaptive maintenance strategy.
+*   `maintenance.intelligent.traffic_threshold`: The traffic threshold for the intelligent strategy.
+*   `security.rate_limiting.enabled`: Enable or disable rate limiting.
 
 ## 🤝 Contributing
 

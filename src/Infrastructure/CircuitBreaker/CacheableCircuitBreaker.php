@@ -5,6 +5,13 @@ namespace MaintenancePro\Infrastructure\CircuitBreaker;
 
 use MaintenancePro\Infrastructure\Cache\CacheInterface;
 
+/**
+ * A cache-based implementation of the CircuitBreakerInterface.
+ *
+ * This class uses a cache to store the state of the circuit, including the number of failures
+ * and the timestamp of the last failure. This allows the circuit breaker to be stateful across
+ * requests without requiring a separate storage mechanism.
+ */
 class CacheableCircuitBreaker implements CircuitBreakerInterface
 {
     private const STATE_CLOSED = 'CLOSED';
@@ -16,6 +23,12 @@ class CacheableCircuitBreaker implements CircuitBreakerInterface
     private int $openTimeout; // in seconds
     private int $halfOpenTimeout; // in seconds
 
+    /**
+     * @param CacheInterface $cache The cache to use for storing the circuit breaker's state.
+     * @param int $failureThreshold The number of failures required to open the circuit.
+     * @param int $openTimeout The number of seconds the circuit should remain open before transitioning to half-open.
+     * @param int $halfOpenTimeout The number of seconds to wait in the half-open state before re-closing the circuit.
+     */
     public function __construct(
         CacheInterface $cache,
         int $failureThreshold = 5,
@@ -28,6 +41,9 @@ class CacheableCircuitBreaker implements CircuitBreakerInterface
         $this->halfOpenTimeout = $halfOpenTimeout;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function isAvailable(string $serviceName): bool
     {
         $status = $this->getStatus($serviceName);
@@ -39,12 +55,18 @@ class CacheableCircuitBreaker implements CircuitBreakerInterface
         return true;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function recordSuccess(string $serviceName): void
     {
         $this->cache->delete($this->getCacheKey($serviceName, 'failures'));
         $this->cache->delete($this->getCacheKey($serviceName, 'last_failure'));
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function recordFailure(string $serviceName): void
     {
         $failuresKey = $this->getCacheKey($serviceName, 'failures');
@@ -57,6 +79,9 @@ class CacheableCircuitBreaker implements CircuitBreakerInterface
         $this->cache->set($lastFailureKey, time(), $this->openTimeout * 2);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getStatus(string $serviceName): array
     {
         $failures = (int) $this->cache->get($this->getCacheKey($serviceName, 'failures'), 0);

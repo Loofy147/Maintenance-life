@@ -6,7 +6,10 @@ namespace MaintenancePro\Presentation\Cli;
 use MaintenancePro\Application\Kernel;
 use MaintenancePro\Application\Service\AccessControlService;
 use MaintenancePro\Application\Service\MaintenanceService;
-use MaintenancePro\Application\Service\MetricsServiceInterface;
+use MaintenancePro\Domain\Contracts\MetricsInterface;
+use MaintenancePro\Infrastructure\CircuitBreaker\CircuitBreakerInterface;
+use MaintenancePro\Infrastructure\Health\HealthCheckAggregator;
+use MaintenancePro\Infrastructure\Service\Mock\MockExternalService;
 
 class CliHandler
 {
@@ -22,8 +25,8 @@ class CliHandler
     public function handle(): void
     {
         $startTime = microtime(true);
-        /** @var MetricsServiceInterface $metrics */
-        $metrics = $this->app->getContainer()->get(MetricsServiceInterface::class);
+        /** @var MetricsInterface $metrics */
+        $metrics = $this->app->getContainer()->get(MetricsInterface::class);
 
         $command = $this->argv[1] ?? 'help';
         $metrics->increment('cli.command.count', 1, ['command' => $command]);
@@ -124,9 +127,9 @@ class CliHandler
 
     private function commandMetricsReport(): void
     {
-        /** @var MetricsServiceInterface $metrics */
-        $metrics = $this->app->getContainer()->get(MetricsServiceInterface::class);
-        $report = $metrics->generateReport();
+        /** @var MetricsInterface $metrics */
+        $metrics = $this->app->getContainer()->get(MetricsInterface::class);
+        $report = $metrics->getReport();
 
         echo "📊 Performance Metrics Report (last 24 hours)\n";
         echo "================================================\n";
@@ -148,6 +151,58 @@ class CliHandler
                 echo "  Max: " . number_format($data['max'], 2) . "ms\n";
             }
         }
+    }
+
+    private function commandHealthCheck(): void
+    {
+        /** @var HealthCheckAggregator $healthCheck */
+        $healthCheck = $this->app->getContainer()->get(HealthCheckAggregator::class);
+        $report = $healthCheck->runAll();
+
+        echo "🩺 Health Check Report\n";
+        echo "=======================\n";
+        echo "Overall Status: " . strtoupper($report['status']) . "\n\n";
+
+        foreach ($report['checks'] as $name => $check) {
+            $status = $check['healthy'] ? '✅ HEALTHY' : '❌ UNHEALTHY';
+            echo "Service: " . str_pad($name, 15) . " | Status: {$status}\n";
+            echo "  Message: {$check['message']}\n";
+            if (!empty($check['details'])) {
+                echo "  Details: " . json_encode($check['details']) . "\n";
+            }
+        }
+    }
+
+    private function commandMockServiceCall(): void
+    {
+        /** @var CircuitBreakerInterface $circuitBreaker */
+        $circuitBreaker = $this->app->getContainer()->get(CircuitBreakerInterface::class);
+        /** @var MockExternalService $mockService */
+        $mockService = $this->app->getContainer()->get(MockExternalService::class);
+
+        echo "Attempting to call mock external service...\n";
+        try {
+            $result = $circuitBreaker->call([$mockService, 'fetchData']);
+            echo "✅ SUCCESS: " . json_encode($result) . "\n";
+        } catch (\Exception $e) {
+            echo "❌ ERROR: " . $e->getMessage() . "\n";
+        }
+    }
+
+    private function commandMockServiceFail(): void
+    {
+        /** @var MockExternalService $mockService */
+        $mockService = $this->app->getContainer()->get(MockExternalService::class);
+        $mockService->setFailing(true);
+        echo "Mock external service is now set to FAIL.\n";
+    }
+
+    private function commandMockServiceSucceed(): void
+    {
+        /** @var MockExternalService $mockService */
+        $mockService = $this->app->getContainer()->get(MockExternalService::class);
+        $mockService->setFailing(false);
+        echo "Mock external service is now set to SUCCEED.\n";
     }
 
     private function showHelp(): void
@@ -172,6 +227,12 @@ COMMANDS:
   whitelist:remove <ip>         Remove IP from whitelist
 
   metrics:report                 Generate a performance metrics report
+
+  health:check                   Run a system health check
+
+  mock:service-call              Call the mock external service (to test circuit breaker)
+  mock:service-fail              Set the mock service to fail
+  mock:service-succeed           Set the mock service to succeed
 
 EXAMPLES:
   php bin/console enable "Database upgrade" 7200

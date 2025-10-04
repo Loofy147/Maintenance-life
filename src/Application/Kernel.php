@@ -6,34 +6,35 @@ namespace MaintenancePro\Application;
 use MaintenancePro\Application\Event\EventDispatcher;
 use MaintenancePro\Application\Event\EventDispatcherInterface;
 use MaintenancePro\Application\Service\AccessControlService;
-use MaintenancePro\Application\Service\AnalyticsService;
-use MaintenancePro\Application\Service\AnalyticsServiceInterface;
 use MaintenancePro\Application\Service\MaintenanceService;
 use MaintenancePro\Application\Service\SecurityService;
 use MaintenancePro\Application\Service\SecurityServiceInterface;
-use MaintenancePro\Domain\Repository\RepositoryInterface;
 use MaintenancePro\Domain\Strategy\DefaultMaintenanceStrategy;
 use MaintenancePro\Domain\Strategy\MaintenanceStrategyInterface;
 use MaintenancePro\Infrastructure\Cache\CacheInterface;
+use MaintenancePro\Domain\Contracts\ConfigurationInterface;
+use MaintenancePro\Domain\Contracts\MetricsInterface;
 use MaintenancePro\Infrastructure\Cache\FileSystemCache;
-use MaintenancePro\Infrastructure\Config\ConfigurationManagerInterface;
-use MaintenancePro\Infrastructure\Config\JsonConfigurationManager;
+use MaintenancePro\Infrastructure\Configuration\JsonConfiguration;
 use MaintenancePro\Infrastructure\Logger\MonologLogger;
-use MaintenancePro\Infrastructure\Logger\LoggerInterface;
+use MaintenancePro\Infrastructure\Metrics\BufferedMetricsService;
 use MaintenancePro\Infrastructure\Repository\AnalyticsEventRepository;
-use MaintenancePro\Infrastructure\Service\MetricsService;
-use MaintenancePro\Application\Service\MetricsServiceInterface;
 use MaintenancePro\Presentation\Template\BasicTemplateRenderer;
 use MaintenancePro\Presentation\Template\TemplateRendererInterface;
 use MaintenancePro\Presentation\Web\Controller\AdminController;
 use MaintenancePro\Presentation\Web\Router;
 use MaintenancePro\Infrastructure\CircuitBreaker\CircuitBreakerInterface;
 use MaintenancePro\Infrastructure\CircuitBreaker\CacheableCircuitBreaker;
+use MaintenancePro\Infrastructure\Health\HealthCheckAggregator;
+use MaintenancePro\Infrastructure\Health\DatabaseHealthCheck;
+use MaintenancePro\Infrastructure\Health\CacheHealthCheck;
+use MaintenancePro\Infrastructure\Health\DiskSpaceHealthCheck;
+use MaintenancePro\Infrastructure\Service\Mock\MockExternalService;
 
 class Kernel
 {
     private ServiceContainer $container;
-    private ConfigurationManagerInterface $config;
+    private ConfigurationInterface $config;
     private LoggerInterface $logger;
 
     public function __construct(string $rootPath)
@@ -69,12 +70,13 @@ class Kernel
     {
         $paths = $this->container->get('paths');
 
-        $this->container->singleton(ConfigurationManagerInterface::class, function($c) use ($paths) {
+        $this->container->singleton(ConfigurationInterface::class, function ($c) use ($paths) {
             $configPath = $paths['config'] . '/config.json';
-            $config = new JsonConfigurationManager($configPath);
-            $config->set('system.config_path', $configPath);
-            $config->set('system.paths', $paths);
-            return $config;
+            $schema = [
+                'maintenance.enabled' => ['type' => 'boolean', 'required' => true],
+                'security.rate_limiting.max_requests' => ['type' => 'integer']
+            ];
+            return new JsonConfiguration($configPath, $schema);
         });
 
         $this->container->singleton(LoggerInterface::class, function($c) use ($paths) {
@@ -84,7 +86,7 @@ class Kernel
         $this->container->singleton(CacheInterface::class, function($c) use ($paths) {
             return new FileSystemCache(
                 $paths['cache'],
-                $c->get(MetricsServiceInterface::class)
+                $c->get(MetricsInterface::class)
             );
         });
 
@@ -103,29 +105,17 @@ class Kernel
             return $pdo;
         });
 
-        $this->container->singleton(RepositoryInterface::class, function($c) {
-            return new AnalyticsEventRepository($c->get(\PDO::class), $c->get(LoggerInterface::class));
-        });
-
         $this->container->singleton(AccessControlService::class, function($c) {
             return new AccessControlService(
-                $c->get(ConfigurationManagerInterface::class),
+                $c->get(ConfigurationInterface::class),
                 $c->get(CacheInterface::class),
                 $c->get(LoggerInterface::class)
             );
         });
 
-        $this->container->singleton(AnalyticsServiceInterface::class, function($c) {
-            return new AnalyticsService(
-                $c->get(RepositoryInterface::class),
-                $c->get(LoggerInterface::class),
-                $c->get(CacheInterface::class)
-            );
-        });
-
         $this->container->singleton(SecurityServiceInterface::class, function($c) {
             return new SecurityService(
-                $c->get(ConfigurationManagerInterface::class),
+                $c->get(ConfigurationInterface::class),
                 $c->get(CacheInterface::class),
                 $c->get(LoggerInterface::class),
                 $c->get(EventDispatcherInterface::class)
@@ -133,12 +123,12 @@ class Kernel
         });
 
         $this->container->singleton(MaintenanceStrategyInterface::class, function($c) {
-            $config = $c->get(ConfigurationManagerInterface::class);
+            $config = $c->get(ConfigurationInterface::class);
             if ($config->get('maintenance.strategy') === 'intelligent') {
                 return new IntelligentMaintenanceStrategy(
                     $config,
                     $c->get(AccessControlService::class),
-                    $c->get(MetricsServiceInterface::class)
+                    $c->get(MetricsInterface::class)
                 );
             }
 
@@ -150,15 +140,15 @@ class Kernel
 
         $this->container->singleton(MaintenanceService::class, function($c) {
             return new MaintenanceService(
-                $c->get(ConfigurationManagerInterface::class),
+                $c->get(ConfigurationInterface::class),
                 $c->get(EventDispatcherInterface::class),
                 $c->get(LoggerInterface::class),
                 $c->get(MaintenanceStrategyInterface::class)
             );
         });
 
-        $this->container->singleton(MetricsServiceInterface::class, function($c) {
-            return new MetricsService($c->get(\PDO::class));
+        $this->container->singleton(MetricsInterface::class, function ($c) {
+            return new BufferedMetricsService($c->get(CacheInterface::class));
         });
 
         $this->container->singleton(AdminController::class, function($c) {
@@ -166,19 +156,33 @@ class Kernel
                 $c->get(TemplateRendererInterface::class),
                 $c->get(MaintenanceService::class),
                 $c->get(AccessControlService::class),
-                $c->get(MetricsServiceInterface::class),
-                $c->get(ConfigurationManagerInterface::class)
+                $c->get(MetricsInterface::class),
+                $c->get(ConfigurationInterface::class),
+                $c->get(HealthCheckAggregator::class),
+                $c->get(CircuitBreakerInterface::class)
             );
         });
 
         $this->container->singleton(CircuitBreakerInterface::class, function ($c) {
             return new CacheableCircuitBreaker($c->get(CacheInterface::class));
         });
+
+        $this->container->singleton(HealthCheckAggregator::class, function ($c) use ($paths) {
+            $aggregator = new HealthCheckAggregator();
+            $aggregator->addCheck(new DatabaseHealthCheck($c->get(\PDO::class)));
+            $aggregator->addCheck(new CacheHealthCheck($c->get(CacheInterface::class)));
+            $aggregator->addCheck(new DiskSpaceHealthCheck($paths['storage']));
+            return $aggregator;
+        });
+
+        $this->container->singleton(MockExternalService::class, function ($c) use ($paths) {
+            return new MockExternalService($paths['storage']);
+        });
     }
 
     private function initialize(): void
     {
-        $this->config = $this->container->get(ConfigurationManagerInterface::class);
+        $this->config = $this->container->get(ConfigurationInterface::class);
         $this->logger = $this->container->get(LoggerInterface::class);
 
         date_default_timezone_set($this->config->get('app.timezone', 'UTC'));
@@ -190,8 +194,8 @@ class Kernel
     public function run(): void
     {
         $startTime = microtime(true);
-        /** @var MetricsServiceInterface $metrics */
-        $metrics = $this->container->get(MetricsServiceInterface::class);
+        /** @var MetricsInterface $metrics */
+        $metrics = $this->container->get(MetricsInterface::class);
         $metrics->increment('request.count');
 
         $this->logger->info('Application started.');
