@@ -18,13 +18,17 @@ use MaintenancePro\Infrastructure\Cache\CacheInterface;
 use MaintenancePro\Infrastructure\Cache\FileSystemCache;
 use MaintenancePro\Infrastructure\Config\ConfigurationManagerInterface;
 use MaintenancePro\Infrastructure\Config\JsonConfigurationManager;
-use MaintenancePro\Infrastructure\Logger\FileLogger;
+use MaintenancePro\Infrastructure\Logger\MonologLogger;
 use MaintenancePro\Infrastructure\Logger\LoggerInterface;
 use MaintenancePro\Infrastructure\Repository\AnalyticsEventRepository;
 use MaintenancePro\Infrastructure\Service\MetricsService;
 use MaintenancePro\Application\Service\MetricsServiceInterface;
 use MaintenancePro\Presentation\Template\BasicTemplateRenderer;
 use MaintenancePro\Presentation\Template\TemplateRendererInterface;
+use MaintenancePro\Presentation\Web\Controller\AdminController;
+use MaintenancePro\Presentation\Web\Router;
+use MaintenancePro\Infrastructure\CircuitBreaker\CircuitBreakerInterface;
+use MaintenancePro\Infrastructure\CircuitBreaker\CacheableCircuitBreaker;
 
 class Kernel
 {
@@ -74,7 +78,7 @@ class Kernel
         });
 
         $this->container->singleton(LoggerInterface::class, function($c) use ($paths) {
-            return new FileLogger($paths['logs'] . '/app.log');
+            return new MonologLogger($paths['logs'] . '/app.log');
         });
 
         $this->container->singleton(CacheInterface::class, function($c) use ($paths) {
@@ -156,6 +160,20 @@ class Kernel
         $this->container->singleton(MetricsServiceInterface::class, function($c) {
             return new MetricsService($c->get(\PDO::class));
         });
+
+        $this->container->singleton(AdminController::class, function($c) {
+            return new AdminController(
+                $c->get(TemplateRendererInterface::class),
+                $c->get(MaintenanceService::class),
+                $c->get(AccessControlService::class),
+                $c->get(MetricsServiceInterface::class),
+                $c->get(ConfigurationManagerInterface::class)
+            );
+        });
+
+        $this->container->singleton(CircuitBreakerInterface::class, function ($c) {
+            return new CacheableCircuitBreaker($c->get(CacheInterface::class));
+        });
     }
 
     private function initialize(): void
@@ -172,11 +190,25 @@ class Kernel
     public function run(): void
     {
         $startTime = microtime(true);
+        /** @var MetricsServiceInterface $metrics */
         $metrics = $this->container->get(MetricsServiceInterface::class);
         $metrics->increment('request.count');
 
         $this->logger->info('Application started.');
 
+        $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+
+        if (str_starts_with($requestPath, '/admin')) {
+            $this->runAdmin();
+        } else {
+            $this->runPublic();
+        }
+
+        $metrics->timing('request.time', (microtime(true) - $startTime) * 1000);
+    }
+
+    private function runPublic(): void
+    {
         $maintenanceService = $this->container->get(MaintenanceService::class);
         $context = [
             'ip' => $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown',
@@ -197,13 +229,24 @@ class Kernel
                 'title' => $config->get('maintenance.title', 'Site Under Maintenance'),
                 'message' => $config->get('maintenance.message', 'We are currently performing scheduled maintenance. We should be back online shortly.')
             ]);
-            $metrics->timing('request.time', (microtime(true) - $startTime) * 1000);
-            exit;
+            return;
         }
 
         echo "Application is running.";
         $this->logger->info('Application finished.');
-        $metrics->timing('request.time', (microtime(true) - $startTime) * 1000);
+    }
+
+    private function runAdmin(): void
+    {
+        $router = new Router($this->container);
+
+        $router->add('GET', '/admin', [AdminController::class, 'index']);
+        $router->add('POST', '/admin/maintenance/enable', [AdminController::class, 'enableMaintenance']);
+        $router->add('POST', '/admin/maintenance/disable', [AdminController::class, 'disableMaintenance']);
+        $router->add('POST', '/admin/whitelist/add', [AdminController::class, 'addWhitelistIp']);
+        $router->add('POST', '/admin/whitelist/remove', [AdminController::class, 'removeWhitelistIp']);
+
+        $router->dispatch();
     }
 
     public function handleError(int $errno, string $errstr, string $errfile, int $errline): void
