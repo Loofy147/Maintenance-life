@@ -1,0 +1,20 @@
+{
+    "name": "enterprise-solutions/maintenance-pro",
+    "description": "Enterprise Maintenance Mode System",
+    "type": "project",
+    "license": "Commercial",
+    "authors": [
+        {
+            "name": "Enterprise Solutions Team",
+            "email": "contact@enterprisesolutions.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "MaintenancePro\\": "src/"
+        }
+    }
+}
