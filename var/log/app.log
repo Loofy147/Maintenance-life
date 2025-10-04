@@ -25,3 +25,7 @@
 [2025-10-04 13:44:15] [INFO] Maintenance mode disabled
 [2025-10-04 13:44:15] [INFO] Application started.
 [2025-10-04 13:44:15] [INFO] Application finished.
+[2025-10-04 14:44:54] [CRITICAL] Uncaught Exception: MaintenancePro\Infrastructure\Cache\FileSystemCache::__construct(): Argument #2 ($metrics) must be of type ?MaintenancePro\Infrastructure\Cache\MetricsServiceInterface, MaintenancePro\Infrastructure\Service\MetricsService given, called in /app/src/Application/Kernel.php on line 81 {"exception":{}}
+[2025-10-04 14:44:54] [CRITICAL] Uncaught Exception: MaintenancePro\Infrastructure\Cache\FileSystemCache::__construct(): Argument #2 ($metrics) must be of type ?MaintenancePro\Infrastructure\Cache\MetricsServiceInterface, MaintenancePro\Infrastructure\Service\MetricsService given, called in /app/src/Application/Kernel.php on line 81 {"exception":{}}
+[2025-10-04 14:44:54] [CRITICAL] Uncaught Exception: MaintenancePro\Infrastructure\Cache\FileSystemCache::__construct(): Argument #2 ($metrics) must be of type ?MaintenancePro\Infrastructure\Cache\MetricsServiceInterface, MaintenancePro\Infrastructure\Service\MetricsService given, called in /app/src/Application/Kernel.php on line 81 {"exception":{}}
+[2025-10-04 14:45:21] [CRITICAL] Uncaught Exception: MaintenancePro\Infrastructure\Cache\FileSystemCache::__construct(): Argument #2 ($metrics) must be of type ?MaintenancePro\Infrastructure\Cache\MetricsServiceInterface, MaintenancePro\Infrastructure\Service\MetricsService given, called in /app/src/Application/Kernel.php on line 81 {"exception":{}}

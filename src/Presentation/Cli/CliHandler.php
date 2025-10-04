@@ -6,6 +6,7 @@ namespace MaintenancePro\Presentation\Cli;
 use MaintenancePro\Application\Kernel;
 use MaintenancePro\Application\Service\AccessControlService;
 use MaintenancePro\Application\Service\MaintenanceService;
+use MaintenancePro\Application\Service\MetricsServiceInterface;
 
 class CliHandler
 {
@@ -20,9 +21,14 @@ class CliHandler
 
     public function handle(): void
     {
-        $command = $this->argv[1] ?? null;
+        $startTime = microtime(true);
+        /** @var MetricsServiceInterface $metrics */
+        $metrics = $this->app->getContainer()->get(MetricsServiceInterface::class);
 
-        if (!$command) {
+        $command = $this->argv[1] ?? 'help';
+        $metrics->increment('cli.command.count', 1, ['command' => $command]);
+
+        if ($command === 'help') {
             $this->showHelp();
             return;
         }
@@ -35,6 +41,8 @@ class CliHandler
             echo "Unknown command: {$command}\n";
             $this->showHelp();
         }
+
+        $metrics->timing('cli.command.time', (microtime(true) - $startTime) * 1000, ['command' => $command]);
     }
 
     private function commandEnable(): void
@@ -114,6 +122,34 @@ class CliHandler
         echo "✓ IP removed from whitelist: {$ip}\n";
     }
 
+    private function commandMetricsReport(): void
+    {
+        /** @var MetricsServiceInterface $metrics */
+        $metrics = $this->app->getContainer()->get(MetricsServiceInterface::class);
+        $report = $metrics->generateReport();
+
+        echo "📊 Performance Metrics Report (last 24 hours)\n";
+        echo "================================================\n";
+
+        if (empty($report)) {
+            echo "No metrics recorded yet.\n";
+            return;
+        }
+
+        foreach ($report as $key => $data) {
+            echo "\nMetric: {$key}\n";
+            echo "  Type: {$data['type']}\n";
+            if ($data['type'] === 'counter') {
+                echo "  Total: {$data['total']}\n";
+            } else {
+                echo "  Count: {$data['count']}\n";
+                echo "  Avg: " . number_format($data['average'], 2) . "ms\n";
+                echo "  Min: " . number_format($data['min'], 2) . "ms\n";
+                echo "  Max: " . number_format($data['max'], 2) . "ms\n";
+            }
+        }
+    }
+
     private function showHelp(): void
     {
         echo <<<HELP
@@ -134,6 +170,8 @@ COMMANDS:
   whitelist:add <ip>            Add IP to whitelist
 
   whitelist:remove <ip>         Remove IP from whitelist
+
+  metrics:report                 Generate a performance metrics report
 
 EXAMPLES:
   php bin/console enable "Database upgrade" 7200
