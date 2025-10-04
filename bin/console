@@ -1,0 +1,21 @@
+#!/usr/bin/env php
+<?php
+// bin/console
+
+require_once dirname(__DIR__) . '/vendor/autoload.php';
+
+use MaintenancePro\Application\Kernel;
+use MaintenancePro\Presentation\Cli\CliHandler;
+
+if (php_sapi_name() !== 'cli') {
+    die('This script can only be run from the command line.');
+}
+
+try {
+    $app = new Kernel(dirname(__DIR__));
+    $cli = new CliHandler($app, $argv);
+    $cli->handle();
+} catch (\Exception $e) {
+    echo "An error occurred: " . $e->getMessage() . "\n";
+    exit(1);
+}
