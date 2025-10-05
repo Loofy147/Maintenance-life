@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MaintenancePro\Domain\ValueObject;
+namespace MaintenancePro\Domain\ValueObjects;
 
 final class Email
 {

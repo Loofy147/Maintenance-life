@@ -11,10 +11,11 @@ use MaintenancePro\Application\Service\SecurityService;
 use MaintenancePro\Application\Service\SecurityServiceInterface;
 use MaintenancePro\Domain\Strategy\DefaultMaintenanceStrategy;
 use MaintenancePro\Domain\Strategy\MaintenanceStrategyInterface;
-use MaintenancePro\Infrastructure\Cache\CacheInterface;
+use MaintenancePro\Application\LoggerInterface;
+use MaintenancePro\Domain\Contracts\CacheInterface;
 use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Domain\Contracts\MetricsInterface;
-use MaintenancePro\Infrastructure\Cache\FileSystemCache;
+use MaintenancePro\Infrastructure\Cache\FileCache;
 use MaintenancePro\Infrastructure\Configuration\JsonConfiguration;
 use MaintenancePro\Infrastructure\Logger\MonologLogger;
 use MaintenancePro\Infrastructure\Metrics\BufferedMetricsService;
@@ -56,7 +57,7 @@ class Kernel
             'storage' => $rootPath . '/var/storage',
         ];
 
-        foreach (['cache', 'logs', 'storage'] as $dir) {
+        foreach (['config', 'cache', 'logs', 'storage'] as $dir) {
             $path = $paths[$dir];
             if (!is_dir($path)) {
                 mkdir($path, 0755, true);
@@ -72,6 +73,18 @@ class Kernel
 
         $this->container->singleton(ConfigurationInterface::class, function ($c) use ($paths) {
             $configPath = $paths['config'] . '/config.json';
+            if (!file_exists($configPath)) {
+                $defaultConfig = [
+                    'maintenance.enabled' => false,
+                    'maintenance.title' => 'Site Under Maintenance',
+                    'maintenance.message' => 'We are currently performing scheduled maintenance. We should be back online shortly.',
+                    'maintenance.allowed_ips' => [],
+                    'app.timezone' => 'UTC',
+                    'security.rate_limiting.max_requests' => 100,
+                    'security.rate_limiting.time_window' => 60,
+                ];
+                file_put_contents($configPath, json_encode($defaultConfig, JSON_PRETTY_PRINT));
+            }
             $schema = [
                 'maintenance.enabled' => ['type' => 'boolean', 'required' => true],
                 'security.rate_limiting.max_requests' => ['type' => 'integer']
@@ -84,9 +97,8 @@ class Kernel
         });
 
         $this->container->singleton(CacheInterface::class, function($c) use ($paths) {
-            return new FileSystemCache(
-                $paths['cache'],
-                $c->get(MetricsInterface::class)
+            return new FileCache(
+                $paths['cache']
             );
         });
 
@@ -275,5 +287,20 @@ class Kernel
     public function getContainer(): ServiceContainer
     {
         return $this->container;
+    }
+
+    public function getConfig(): ConfigurationInterface
+    {
+        return $this->container->get(ConfigurationInterface::class);
+    }
+
+    public function getCache(): CacheInterface
+    {
+        return $this->container->get(CacheInterface::class);
+    }
+
+    public function getMetrics(): MetricsInterface
+    {
+        return $this->container->get(MetricsInterface::class);
     }
 }
