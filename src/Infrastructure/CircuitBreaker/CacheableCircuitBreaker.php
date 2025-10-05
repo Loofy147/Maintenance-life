@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Infrastructure\CircuitBreaker;
 
-use MaintenancePro\Infrastructure\Cache\CacheInterface;
+use MaintenancePro\Domain\Contracts\CacheInterface;
 
 /**
  * A cache-based implementation of the CircuitBreakerInterface.
@@ -104,6 +104,13 @@ class CacheableCircuitBreaker implements CircuitBreakerInterface
         ];
     }
 
+    /**
+     * Generates a unique cache key for a given service and metric.
+     *
+     * @param string $serviceName The name of the service.
+     * @param string $metric The name of the metric (e.g., 'failures', 'last_failure').
+     * @return string The generated cache key.
+     */
     private function getCacheKey(string $serviceName, string $metric): string
     {
         return "circuit_breaker.{$serviceName}.{$metric}";

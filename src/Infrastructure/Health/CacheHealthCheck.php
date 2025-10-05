@@ -3,18 +3,31 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Infrastructure\Health;
 
+use MaintenancePro\Domain\Contracts\CacheInterface;
 use MaintenancePro\Domain\ValueObjects\HealthStatusValue;
-use MaintenancePro\Infrastructure\Cache\CacheInterface;
 
+/**
+ * Performs a health check on the application's cache system.
+ *
+ * It verifies that the cache is reachable and that basic operations (set, get, delete)
+ * are working correctly. This check is typically not critical, as the application
+ * might be able to function without a cache, albeit with degraded performance.
+ */
 class CacheHealthCheck implements HealthCheckInterface
 {
     private CacheInterface $cache;
 
+    /**
+     * @param CacheInterface $cache The cache instance to be checked.
+     */
     public function __construct(CacheInterface $cache)
     {
         $this->cache = $cache;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function check(): HealthStatusValue
     {
         try {
@@ -26,22 +39,29 @@ class CacheHealthCheck implements HealthCheckInterface
             $this->cache->delete($testKey);
 
             if ($retrieved === $testValue) {
-                return HealthStatusValue::healthy('Cache working correctly');
+                return HealthStatusValue::healthy('Cache read/write test successful.');
             }
 
-            return HealthStatusValue::unhealthy('Cache read/write failed');
+            return HealthStatusValue::unhealthy('Cache read/write test failed; value mismatch.');
         } catch (\Exception $e) {
-            return HealthStatusValue::unhealthy('Cache error', [
-                'error' => $e->getMessage()
+            return HealthStatusValue::unhealthy('An exception occurred while accessing the cache.', [
+                'exception_class' => get_class($e),
+                'error_message' => $e->getMessage()
             ]);
         }
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getName(): string
     {
         return 'cache';
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function isCritical(): bool
     {
         return false;
