@@ -1,6 +1,7 @@
 {
     "app": {
-        "timezone": "UTC"
+        "timezone": "UTC",
+        "debug": true
     },
     "maintenance": {
         "enabled": false,

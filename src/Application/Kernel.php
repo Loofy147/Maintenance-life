@@ -184,6 +184,12 @@ class Kernel
     {
         $router = new Router($this->container);
 
+        $router->add('GET', '/admin/login', [AdminController::class, 'showLoginForm']);
+        $router->add('POST', '/admin/login', [AdminController::class, 'login']);
+        $router->add('GET', '/admin/logout', [AdminController::class, 'logout']);
+        $router->add('GET', '/admin/2fa', [AdminController::class, 'showTwoFactorForm']);
+        $router->add('POST', '/admin/2fa', [AdminController::class, 'verifyTwoFactor']);
+
         $router->add('GET', '/admin', [AdminController::class, 'index']);
         $router->add('POST', '/admin/maintenance/enable', [AdminController::class, 'enableMaintenance']);
         $router->add('POST', '/admin/maintenance/disable', [AdminController::class, 'disableMaintenance']);
@@ -221,7 +227,7 @@ class Kernel
         } else {
             http_response_code(500);
             header('Content-Type: text/html; charset=UTF-8');
-            $renderer = $this->container->get(TemplateRendererInterface::class);
+            $renderer = $this->container->get(\MaintenancePro\Presentation\Template\TemplateRendererInterface::class);
             echo $renderer->render('error.phtml', [
                 'title' => 'Internal Server Error',
                 'message' => 'An unexpected error occurred. Please try again later.'

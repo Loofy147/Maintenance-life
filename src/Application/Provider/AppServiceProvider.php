@@ -15,13 +15,50 @@ use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Domain\Contracts\MetricsInterface;
 use MaintenancePro\Domain\Strategy\DefaultMaintenanceStrategy;
 use MaintenancePro\Domain\Strategy\IntelligentMaintenanceStrategy;
+use MaintenancePro\Application\Service\Contract\WebhookServiceInterface;
+use MaintenancePro\Application\Service\Contract\SlackNotificationServiceInterface;
+use MaintenancePro\Application\Service\SlackNotificationService;
+use MaintenancePro\Application\Service\WebhookService;
 use MaintenancePro\Domain\Strategy\MaintenanceStrategyInterface;
 use MaintenancePro\Infrastructure\Health\HealthCheckAggregator;
+use MaintenancePro\Application\Service\AuthService;
+use MaintenancePro\Application\Service\Contract\AuthServiceInterface;
+use MaintenancePro\Domain\Repository\UserRepositoryInterface;
+use MaintenancePro\Infrastructure\Repository\SqliteUserRepository;
+use GuzzleHttp\Client;
 
 class AppServiceProvider implements ServiceProviderInterface
 {
     public function register(ServiceContainer $container): void
     {
+        $container->singleton(UserRepositoryInterface::class, function($c) {
+            return new SqliteUserRepository($c->get(\PDO::class));
+        });
+
+        $container->singleton(AuthServiceInterface::class, function($c) {
+            return new AuthService($c->get(UserRepositoryInterface::class));
+        });
+
+        $container->singleton(Client::class, function ($c) {
+            return new Client();
+        });
+
+        $container->singleton(WebhookServiceInterface::class, function($c) {
+            return new WebhookService(
+                $c->get(Client::class),
+                $c->get(ConfigurationInterface::class),
+                $c->get(LoggerInterface::class)
+            );
+        });
+
+        $container->singleton(SlackNotificationServiceInterface::class, function($c) {
+            return new SlackNotificationService(
+                $c->get(Client::class),
+                $c->get(ConfigurationInterface::class),
+                $c->get(LoggerInterface::class)
+            );
+        });
+
         $container->singleton(AccessControlService::class, function($c) {
             return new AccessControlService(
                 $c->get(ConfigurationInterface::class),

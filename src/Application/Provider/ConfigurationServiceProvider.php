@@ -31,6 +31,14 @@ class ConfigurationServiceProvider implements ServiceProviderInterface
                     'app.debug' => false,
                     'security.rate_limiting.max_requests' => 100,
                     'security.rate_limiting.time_window' => 60,
+                    'webhooks' => [],
+                    'slack' => [
+                        'webhook_url' => '',
+                    ],
+                    '2fa' => [
+                        'enabled' => false,
+                        'issuer' => 'MaintenancePro',
+                    ],
                 ];
                 file_put_contents($configPath, json_encode($defaultConfig, JSON_PRETTY_PRINT));
             }
@@ -39,6 +47,9 @@ class ConfigurationServiceProvider implements ServiceProviderInterface
                 'maintenance.enabled' => ['type' => 'boolean', 'required' => true],
                 'security.rate_limiting.max_requests' => ['type' => 'integer'],
                 'app.debug' => ['type' => 'boolean'],
+                'webhooks' => ['type' => 'array'],
+                'slack' => ['type' => 'array'],
+                '2fa' => ['type' => 'array'],
             ];
 
             try {
