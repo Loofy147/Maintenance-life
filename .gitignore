@@ -1,5 +1,18 @@
+# Composer
 /vendor/
-/var/
-/jules-scratch/
-server.log
-composer.lock
+/composer.phar
+/composer.lock
+
+# PHPUnit
+/.phpunit.cache/
+
+# System files
+.DS_Store
+
+# Log files
+/var/logs/
+*.log
+
+# Temp files
+/var/cache/
+/var/storage/
