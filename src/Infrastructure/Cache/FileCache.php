@@ -3,21 +3,18 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Infrastructure\Cache;
 
-use MaintenancePro\Domain\Contracts\MetricsInterface;
+use MaintenancePro\Domain\Contracts\CacheInterface;
 
-class FileSystemCache implements CacheInterface
+class FileCache implements CacheInterface
 {
     private string $cacheDir;
     private array $memoryCache = [];
     private int $hits = 0;
     private int $misses = 0;
 
-    private ?MetricsInterface $metrics;
-
-    public function __construct(string $cacheDir, ?MetricsInterface $metrics = null)
+    public function __construct(string $cacheDir)
     {
         $this->cacheDir = rtrim($cacheDir, '/');
-        $this->metrics = $metrics;
 
         if (!is_dir($this->cacheDir)) {
             mkdir($this->cacheDir, 0755, true);
@@ -28,7 +25,6 @@ class FileSystemCache implements CacheInterface
     {
         if (isset($this->memoryCache[$key])) {
             $this->hits++;
-            $this->metrics?->increment('cache.hits');
             return $this->memoryCache[$key];
         }
 
@@ -36,7 +32,6 @@ class FileSystemCache implements CacheInterface
 
         if (!file_exists($file)) {
             $this->misses++;
-            $this->metrics?->increment('cache.misses');
             return $default;
         }
 
@@ -45,12 +40,10 @@ class FileSystemCache implements CacheInterface
         if ($data['expires_at'] < time()) {
             $this->delete($key);
             $this->misses++;
-            $this->metrics?->increment('cache.misses');
             return $default;
         }
 
         $this->hits++;
-        $this->metrics?->increment('cache.hits');
         $this->memoryCache[$key] = $data['value'];
         return $data['value'];
     }

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MaintenancePro\Infrastructure\Cache;
+namespace MaintenancePro\Domain\Contracts;
 
 interface CacheInterface
 {

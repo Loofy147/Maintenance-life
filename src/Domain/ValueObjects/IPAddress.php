@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MaintenancePro\Domain\ValueObject;
+namespace MaintenancePro\Domain\ValueObjects;
 
 final class IPAddress
 {
@@ -77,5 +77,14 @@ final class IPAddress
         }
 
         return true;
+    }
+
+    public function isPrivate(): bool
+    {
+        return filter_var(
+            $this->address,
+            FILTER_VALIDATE_IP,
+            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+        ) === false;
     }
 }

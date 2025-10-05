@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MaintenancePro\Domain\ValueObject;
+namespace MaintenancePro\Domain\ValueObjects;
 
 final class TimePeriod
 {
@@ -26,6 +26,11 @@ final class TimePeriod
     public function getDuration(): \DateInterval
     {
         return $this->start->diff($this->end);
+    }
+
+    public function getDurationInSeconds(): int
+    {
+        return $this->end->getTimestamp() - $this->start->getTimestamp();
     }
 
     public function getStart(): \DateTimeImmutable
