@@ -10,6 +10,7 @@ use MaintenancePro\Application\Service\MaintenanceService;
 use MaintenancePro\Application\Service\SecurityService;
 use MaintenancePro\Application\Service\SecurityServiceInterface;
 use MaintenancePro\Domain\Strategy\DefaultMaintenanceStrategy;
+use MaintenancePro\Domain\Strategy\IntelligentMaintenanceStrategy;
 use MaintenancePro\Domain\Strategy\MaintenanceStrategyInterface;
 use MaintenancePro\Application\LoggerInterface;
 use MaintenancePro\Domain\Contracts\CacheInterface;
@@ -107,6 +108,11 @@ class Kernel
                     'maintenance.title' => 'Site Under Maintenance',
                     'maintenance.message' => 'We are currently performing scheduled maintenance. We should be back online shortly.',
                     'maintenance.allowed_ips' => [],
+                    'maintenance.strategy' => 'default',
+                    'maintenance.intelligent' => [
+                        'error_rate_threshold' => 5.0,
+                        'response_time_threshold' => 1000,
+                    ],
                     'app.timezone' => 'UTC',
                     'security.rate_limiting.max_requests' => 100,
                     'security.rate_limiting.time_window' => 60,
@@ -165,10 +171,14 @@ class Kernel
             );
         });
 
-        $this->container->singleton(MaintenanceStrategyInterface::class, function($c) {
+        $this->container->singleton(MaintenanceStrategyInterface::class, function ($c) {
             $config = $c->get(ConfigurationInterface::class);
             if ($config->get('maintenance.strategy') === 'intelligent') {
-                // Intelligent strategy could be implemented here
+                return new IntelligentMaintenanceStrategy(
+                    $config,
+                    $c->get(MetricsInterface::class),
+                    $c->get(HealthCheckAggregator::class)
+                );
             }
 
             return new DefaultMaintenanceStrategy(
