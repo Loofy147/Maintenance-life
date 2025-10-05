@@ -3,10 +3,10 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Application\Service;
 
+use MaintenancePro\Application\LoggerInterface;
+use MaintenancePro\Domain\Contracts\CacheInterface;
 use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Domain\ValueObject\IPAddress;
-use MaintenancePro\Infrastructure\Cache\CacheInterface;
-use MaintenancePro\Infrastructure\Logger\LoggerInterface;
 
 class AccessControlService
 {

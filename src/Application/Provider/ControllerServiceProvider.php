@@ -8,6 +8,8 @@ use MaintenancePro\Application\Service\MaintenanceService;
 use MaintenancePro\Application\ServiceContainer;
 use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Domain\Contracts\MetricsInterface;
+use MaintenancePro\Application\Service\Contract\AuthServiceInterface;
+use MaintenancePro\Domain\Repository\UserRepositoryInterface;
 use MaintenancePro\Infrastructure\CircuitBreaker\CircuitBreakerInterface;
 use MaintenancePro\Infrastructure\Health\HealthCheckAggregator;
 use MaintenancePro\Presentation\Template\TemplateRendererInterface;
@@ -25,7 +27,9 @@ class ControllerServiceProvider implements ServiceProviderInterface
                 $c->get(MetricsInterface::class),
                 $c->get(ConfigurationInterface::class),
                 $c->get(HealthCheckAggregator::class),
-                $c->get(CircuitBreakerInterface::class)
+                $c->get(CircuitBreakerInterface::class),
+                $c->get(AuthServiceInterface::class),
+                $c->get(UserRepositoryInterface::class)
             );
         });
     }

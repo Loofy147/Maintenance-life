@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Domain\Entity;
 
-use MaintenancePro\Domain\ValueObject\TimePeriod;
+use MaintenancePro\Domain\ValueObjects\TimePeriod;
 
 class MaintenanceSession
 {

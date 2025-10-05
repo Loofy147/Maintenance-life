@@ -3,33 +3,20 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Domain\Entity;
 
-use MaintenancePro\Domain\ValueObject\Email;
-
-class User implements UserInterface
+class User
 {
-    private int $id;
+    private ?int $id = null;
     private string $username;
-    private Email $email;
-    private string $passwordHash;
-    private array $roles;
-    private \DateTimeImmutable $createdAt;
+    private string $password;
+    private ?string $twoFactorSecret = null;
 
-    public function __construct(
-        int $id,
-        string $username,
-        Email $email,
-        string $passwordHash,
-        array $roles = ['ROLE_USER']
-    ) {
-        $this->id = $id;
+    public function __construct(string $username, string $password)
+    {
         $this->username = $username;
-        $this->email = $email;
-        $this->passwordHash = $passwordHash;
-        $this->roles = $roles;
-        $this->createdAt = new \DateTimeImmutable();
+        $this->password = $password;
     }
 
-    public function getId(): int
+    public function getId(): ?int
     {
         return $this->id;
     }
@@ -39,28 +26,23 @@ class User implements UserInterface
         return $this->username;
     }
 
-    public function getEmail(): string
+    public function getPassword(): string
     {
-        return $this->email->toString();
+        return $this->password;
     }
 
-    public function getRoles(): array
+    public function getTwoFactorSecret(): ?string
     {
-        return $this->roles;
+        return $this->twoFactorSecret;
     }
 
-    public function hasRole(string $role): bool
+    public function setTwoFactorSecret(?string $secret): void
     {
-        return in_array($role, $this->roles, true);
+        $this->twoFactorSecret = $secret;
     }
 
-    public function verifyPassword(string $password): bool
+    public function isTwoFactorEnabled(): bool
     {
-        return password_verify($password, $this->passwordHash);
-    }
-
-    public function isAdmin(): bool
-    {
-        return $this->hasRole('ROLE_ADMIN');
+        return $this->twoFactorSecret !== null;
     }
 }

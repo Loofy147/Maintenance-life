@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Application\Event;
 
+use MaintenancePro\Application\LoggerInterface;
 use MaintenancePro\Domain\Event\EventInterface;
-use MaintenancePro\Infrastructure\Logger\LoggerInterface;
 
 class EventDispatcher implements EventDispatcherInterface
 {
