@@ -3,9 +3,8 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Application;
 
-class ServiceContainer
+class ServiceContainer implements \ArrayAccess
 {
-    private array $services = [];
     private array $factories = [];
     private array $instances = [];
 
@@ -22,12 +21,13 @@ class ServiceContainer
      */
     public function singleton(string $name, callable $factory): void
     {
-        $this->register($name, function() use ($name, $factory) {
-            if (!isset($this->instances[$name])) {
-                $this->instances[$name] = $factory($this);
+        $this->factories[$name] = function () use ($factory) {
+            static $instance;
+            if ($instance === null) {
+                $instance = $factory($this);
             }
-            return $this->instances[$name];
-        });
+            return $instance;
+        };
     }
 
     /**
@@ -60,5 +60,29 @@ class ServiceContainer
     public function has(string $name): bool
     {
         return isset($this->factories[$name]) || isset($this->instances[$name]);
+    }
+
+    public function offsetExists(mixed $offset): bool
+    {
+        return $this->has($offset);
+    }
+
+    public function offsetGet(mixed $offset): mixed
+    {
+        return $this->get($offset);
+    }
+
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+        if (is_callable($value)) {
+            $this->register($offset, $value);
+        } else {
+            $this->instance($offset, $value);
+        }
+    }
+
+    public function offsetUnset(mixed $offset): void
+    {
+        unset($this->factories[$offset], $this->instances[$offset]);
     }
 }

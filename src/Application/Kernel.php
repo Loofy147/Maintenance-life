@@ -3,35 +3,24 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Application;
 
-use MaintenancePro\Application\Event\EventDispatcher;
 use MaintenancePro\Application\Event\EventDispatcherInterface;
-use MaintenancePro\Application\Service\AccessControlService;
-use MaintenancePro\Application\Service\MaintenanceService;
-use MaintenancePro\Application\Service\SecurityService;
-use MaintenancePro\Application\Service\SecurityServiceInterface;
-use MaintenancePro\Domain\Strategy\DefaultMaintenanceStrategy;
-use MaintenancePro\Domain\Strategy\IntelligentMaintenanceStrategy;
-use MaintenancePro\Domain\Strategy\MaintenanceStrategyInterface;
 use MaintenancePro\Application\LoggerInterface;
+use MaintenancePro\Application\Provider\AppServiceProvider;
+use MaintenancePro\Application\Provider\CacheServiceProvider;
+use MaintenancePro\Application\Provider\CircuitBreakerServiceProvider;
+use MaintenancePro\Application\Provider\ConfigurationServiceProvider;
+use MaintenancePro\Application\Provider\ControllerServiceProvider;
+use MaintenancePro\Application\Provider\DatabaseServiceProvider;
+use MaintenancePro\Application\Provider\EventServiceProvider;
+use MaintenancePro\Application\Provider\HealthCheckServiceProvider;
+use MaintenancePro\Application\Provider\LogServiceProvider;
+use MaintenancePro\Application\Provider\MetricsServiceProvider;
+use MaintenancePro\Application\Provider\TemplateServiceProvider;
 use MaintenancePro\Domain\Contracts\CacheInterface;
 use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Domain\Contracts\MetricsInterface;
-use MaintenancePro\Infrastructure\Cache\AdaptiveCache;
-use MaintenancePro\Infrastructure\Cache\FileCache;
-use MaintenancePro\Infrastructure\Configuration\JsonConfiguration;
-use MaintenancePro\Infrastructure\Logger\MonologLogger;
-use MaintenancePro\Infrastructure\Metrics\BufferedMetricsService;
-use MaintenancePro\Presentation\Template\BasicTemplateRenderer;
-use MaintenancePro\Presentation\Template\TemplateRendererInterface;
 use MaintenancePro\Presentation\Web\Controller\AdminController;
 use MaintenancePro\Presentation\Web\Router;
-use MaintenancePro\Infrastructure\CircuitBreaker\CircuitBreakerInterface;
-use MaintenancePro\Infrastructure\CircuitBreaker\CacheableCircuitBreaker;
-use MaintenancePro\Infrastructure\Health\HealthCheckAggregator;
-use MaintenancePro\Infrastructure\Health\DatabaseHealthCheck;
-use MaintenancePro\Infrastructure\Health\CacheHealthCheck;
-use MaintenancePro\Infrastructure\Health\DiskSpaceHealthCheck;
-use MaintenancePro\Infrastructure\Service\Mock\MockExternalService;
 
 /**
  * The core of the application.
@@ -52,13 +41,30 @@ class Kernel
     private LoggerInterface $logger;
 
     /**
+     * @var array<class-string>
+     */
+    protected array $serviceProviders = [
+        LogServiceProvider::class,
+        ConfigurationServiceProvider::class,
+        CacheServiceProvider::class,
+        EventServiceProvider::class,
+        TemplateServiceProvider::class,
+        DatabaseServiceProvider::class,
+        AppServiceProvider::class,
+        MetricsServiceProvider::class,
+        ControllerServiceProvider::class,
+        HealthCheckServiceProvider::class,
+        CircuitBreakerServiceProvider::class,
+    ];
+
+    /**
      * @param string $rootPath The absolute path to the project root.
      */
     public function __construct(string $rootPath)
     {
         $this->container = new ServiceContainer();
         $this->setupPaths($rootPath);
-        $this->registerServices();
+        $this->registerServiceProviders();
         $this->initialize();
     }
 
@@ -91,138 +97,13 @@ class Kernel
     /**
      * Registers all application services in the dependency injection container.
      */
-    private function registerServices(): void
+    private function registerServiceProviders(): void
     {
-        $paths = $this->container->get('paths');
-
-        // Logger must be registered first so it's available for other services.
-        $this->container->singleton(LoggerInterface::class, function($c) use ($paths) {
-            return new MonologLogger($paths['logs'] . '/app.log');
-        });
-
-        $this->container->singleton(ConfigurationInterface::class, function ($c) use ($paths) {
-            $configPath = $paths['config'] . '/config.json';
-            if (!file_exists($configPath)) {
-                $defaultConfig = [
-                    'maintenance.enabled' => false,
-                    'maintenance.title' => 'Site Under Maintenance',
-                    'maintenance.message' => 'We are currently performing scheduled maintenance. We should be back online shortly.',
-                    'maintenance.allowed_ips' => [],
-                    'maintenance.strategy' => 'default',
-                    'maintenance.intelligent' => [
-                        'error_rate_threshold' => 5.0,
-                        'response_time_threshold' => 1000,
-                    ],
-                    'app.timezone' => 'UTC',
-                    'security.rate_limiting.max_requests' => 100,
-                    'security.rate_limiting.time_window' => 60,
-                ];
-                file_put_contents($configPath, json_encode($defaultConfig, JSON_PRETTY_PRINT));
-            }
-            $schema = [
-                'maintenance.enabled' => ['type' => 'boolean', 'required' => true],
-                'security.rate_limiting.max_requests' => ['type' => 'integer']
-            ];
-
-            try {
-                return new JsonConfiguration($configPath, $schema);
-            } catch (\Exception $e) {
-                /** @var LoggerInterface $logger */
-                $logger = $c->get(LoggerInterface::class);
-                $logger->critical('Failed to load or validate configuration.', ['error' => $e->getMessage()]);
-                throw new \RuntimeException('Application could not be initialized due to a configuration error: ' . $e->getMessage(), 0, $e);
-            }
-        });
-
-        $this->container->singleton(CacheInterface::class, function($c) use ($paths) {
-            $fileCache = new FileCache($paths['cache']);
-            return new AdaptiveCache($fileCache);
-        });
-
-        $this->container->singleton(EventDispatcherInterface::class, function($c) {
-            return new EventDispatcher($c->get(LoggerInterface::class));
-        });
-
-        $this->container->singleton(TemplateRendererInterface::class, function($c) use ($paths) {
-            return new BasicTemplateRenderer($paths['templates']);
-        });
-
-        $this->container->singleton(\PDO::class, function($c) use ($paths) {
-            $storagePath = $paths['storage'] . '/database.sqlite';
-            $pdo = new \PDO('sqlite:' . $storagePath);
-            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-            return $pdo;
-        });
-
-        $this->container->singleton(AccessControlService::class, function($c) {
-            return new AccessControlService(
-                $c->get(ConfigurationInterface::class),
-                $c->get(CacheInterface::class),
-                $c->get(LoggerInterface::class)
-            );
-        });
-
-        $this->container->singleton(SecurityServiceInterface::class, function($c) {
-            return new SecurityService(
-                $c->get(ConfigurationInterface::class),
-                $c->get(CacheInterface::class),
-                $c->get(LoggerInterface::class),
-                $c->get(EventDispatcherInterface::class)
-            );
-        });
-
-        $this->container->singleton(MaintenanceStrategyInterface::class, function ($c) {
-            $config = $c->get(ConfigurationInterface::class);
-            if ($config->get('maintenance.strategy') === 'intelligent') {
-                return new IntelligentMaintenanceStrategy(
-                    $config,
-                    $c->get(MetricsInterface::class),
-                    $c->get(HealthCheckAggregator::class)
-                );
-            }
-
-            return new DefaultMaintenanceStrategy(
-                $config,
-                $c->get(AccessControlService::class)
-            );
-        });
-
-        $this->container->singleton(MaintenanceService::class, function($c) {
-            return new MaintenanceService(
-                $c->get(ConfigurationInterface::class),
-                $c->get(EventDispatcherInterface::class),
-                $c->get(LoggerInterface::class),
-                $c->get(MaintenanceStrategyInterface::class)
-            );
-        });
-
-        $this->container->singleton(MetricsInterface::class, function ($c) {
-            return new BufferedMetricsService($c->get(CacheInterface::class));
-        });
-
-        $this->container->singleton(AdminController::class, function($c) {
-            return new AdminController(
-                $c->get(TemplateRendererInterface::class),
-                $c->get(MaintenanceService::class),
-                $c->get(AccessControlService::class),
-                $c->get(MetricsInterface::class),
-                $c->get(ConfigurationInterface::class),
-                $c->get(HealthCheckAggregator::class),
-                $c->get(CircuitBreakerInterface::class)
-            );
-        });
-
-        $this->container->singleton(CircuitBreakerInterface::class, function ($c) {
-            return new CacheableCircuitBreaker($c->get(CacheInterface::class));
-        });
-
-        $this->container->singleton(HealthCheckAggregator::class, function ($c) use ($paths) {
-            $aggregator = new HealthCheckAggregator();
-            $aggregator->addCheck(new DatabaseHealthCheck($c->get(\PDO::class)));
-            $aggregator->addCheck(new CacheHealthCheck($c->get(CacheInterface::class)));
-            $aggregator->addCheck(new DiskSpaceHealthCheck($paths['storage']));
-            return $aggregator;
-        });
+        foreach ($this->serviceProviders as $providerClass) {
+            /** @var \MaintenancePro\Application\Provider\ServiceProviderInterface $provider */
+            $provider = new $providerClass();
+            $provider->register($this->container);
+        }
     }
 
     /**
@@ -332,9 +213,37 @@ class Kernel
             "Uncaught Exception: " . $e->getMessage(),
             ['exception' => $e]
         );
-        http_response_code(500);
-        echo "<h1>Internal Server Error</h1>";
+
+        if ($this->config->get('app.debug', false)) {
+            http_response_code(500);
+            header('Content-Type: text/html; charset=UTF-8');
+            $this->renderDebugException($e);
+        } else {
+            http_response_code(500);
+            header('Content-Type: text/html; charset=UTF-8');
+            $renderer = $this->container->get(TemplateRendererInterface::class);
+            echo $renderer->render('error.phtml', [
+                'title' => 'Internal Server Error',
+                'message' => 'An unexpected error occurred. Please try again later.'
+            ]);
+        }
+
         exit;
+    }
+
+    private function renderDebugException(\Throwable $e): void
+    {
+        echo "<!DOCTYPE html>";
+        echo "<html><head><title>Unhandled Exception</title>";
+        echo "<style>body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 20px; } h1 { color: #b90000; } .trace { background-color: #f0f0f0; padding: 10px; border-radius: 5px; }</style>";
+        echo "</head><body>";
+        echo "<h1>Unhandled Exception</h1>";
+        echo "<h2>" . htmlspecialchars($e->getMessage()) . "</h2>";
+        echo "<p><strong>Type:</strong> " . get_class($e) . "</p>";
+        echo "<p><strong>File:</strong> " . $e->getFile() . " on line " . $e->getLine() . "</p>";
+        echo "<h3>Stack Trace:</h3>";
+        echo "<pre class='trace'>" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
+        echo "</body></html>";
     }
 
     /**
