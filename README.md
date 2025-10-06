@@ -1,5 +1,9 @@
 # MaintenancePro v6.0: Ultimate Enterprise Edition
 
+[![Build Status](https://img.shields.io/github/actions/workflow/status/user/repo/ci.yml?branch=main&style=for-the-badge)](https://github.com/user/repo/actions)
+[![Code Coverage](https://img.shields.io/codecov/c/github/user/repo?style=for-the-badge)](https://codecov.io/gh/user/repo)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+
 MaintenancePro is a professional-grade, enterprise-ready maintenance mode system for PHP applications. It is built on modern architectural principles, including SOLID, Domain-Driven Design (DDD), and a clean, layered architecture. This system is designed to be robust, scalable, and easy to maintain, providing a seamless experience for both developers and end-users.
 
 ## 🏆 Key Features
@@ -52,4 +56,12 @@ The application's configuration is located in `config/config.json`. The configur
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a pull request with any improvements or new features.
+We welcome contributions from the community! Whether it's a bug report, a new feature, or a documentation improvement, we appreciate your help.
+
+Before you get started, please take a moment to review our contribution guidelines:
+
+-   **[CONTRIBUTING.md](CONTRIBUTING.md)**: Our main guide for contributors, covering our branching strategy, coding standards, and pull request process.
+-   **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)**: The standards we expect all community members to follow to ensure a welcoming and inclusive environment.
+-   **[SECURITY.md](SECURITY.md)**: Instructions for responsibly reporting any security vulnerabilities you may find.
+
+We look forward to your contributions!
