@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Domain\Strategy;
 
+use MaintenancePro\Domain\Contracts\AnomalyDetectorInterface;
 use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Domain\Contracts\MetricsInterface;
 use MaintenancePro\Infrastructure\Health\HealthCheckAggregator;
@@ -16,20 +17,24 @@ class IntelligentMaintenanceStrategy implements MaintenanceStrategyInterface
     private ConfigurationInterface $config;
     private MetricsInterface $metrics;
     private HealthCheckAggregator $healthCheckAggregator;
+    private AnomalyDetectorInterface $anomalyDetector;
 
     /**
      * @param ConfigurationInterface $config
      * @param MetricsInterface $metrics
      * @param HealthCheckAggregator $healthCheckAggregator
+     * @param AnomalyDetectorInterface $anomalyDetector
      */
     public function __construct(
         ConfigurationInterface $config,
         MetricsInterface $metrics,
-        HealthCheckAggregator $healthCheckAggregator
+        HealthCheckAggregator $healthCheckAggregator,
+        AnomalyDetectorInterface $anomalyDetector
     ) {
         $this->config = $config;
         $this->metrics = $metrics;
         $this->healthCheckAggregator = $healthCheckAggregator;
+        $this->anomalyDetector = $anomalyDetector;
     }
 
     /**
@@ -46,19 +51,24 @@ class IntelligentMaintenanceStrategy implements MaintenanceStrategyInterface
             return true;
         }
 
-        // 2. Check performance metrics against configured thresholds.
-        $metricsReport = $this->metrics->getReport();
+        // 2. Check for performance anomalies using the anomaly detector.
+        $historicalMetrics = $this->metrics->getHistorical();
+        $currentMetrics = $this->metrics->getReport()['metrics'];
 
-        // Check error rate
-        $errorRateThreshold = $this->config->get('maintenance.intelligent.error_rate_threshold', 5.0); // 5%
-        if (isset($metricsReport['metrics']['error_rate']) && $metricsReport['metrics']['error_rate'] > $errorRateThreshold) {
-            return true;
+        // Check for anomalies in error rate
+        if (isset($currentMetrics['error_rate'])) {
+            $errorRateDataPoints = array_column($historicalMetrics, 'error_rate');
+            if ($this->anomalyDetector->isAnomalous($errorRateDataPoints, $currentMetrics['error_rate'])) {
+                return true;
+            }
         }
 
-        // Check response time
-        $responseTimeThreshold = $this->config->get('maintenance.intelligent.response_time_threshold', 1000); // 1000ms
-        if (isset($metricsReport['metrics']['avg_response_time']) && $metricsReport['metrics']['avg_response_time'] > $responseTimeThreshold) {
-            return true;
+        // Check for anomalies in response time
+        if (isset($currentMetrics['avg_response_time'])) {
+            $responseTimeDataPoints = array_column($historicalMetrics, 'avg_response_time');
+            if ($this->anomalyDetector->isAnomalous($responseTimeDataPoints, $currentMetrics['avg_response_time'])) {
+                return true;
+            }
         }
 
         return false;

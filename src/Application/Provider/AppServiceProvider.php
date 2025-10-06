@@ -10,6 +10,7 @@ use MaintenancePro\Application\Service\MaintenanceService;
 use MaintenancePro\Application\Service\SecurityService;
 use MaintenancePro\Application\Service\SecurityServiceInterface;
 use MaintenancePro\Application\ServiceContainer;
+use MaintenancePro\Domain\Contracts\AnomalyDetectorInterface;
 use MaintenancePro\Domain\Contracts\CacheInterface;
 use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Domain\Contracts\MetricsInterface;
@@ -82,7 +83,8 @@ class AppServiceProvider implements ServiceProviderInterface
                 return new IntelligentMaintenanceStrategy(
                     $config,
                     $c->get(MetricsInterface::class),
-                    $c->get(HealthCheckAggregator::class)
+                    $c->get(HealthCheckAggregator::class),
+                    $c->get(AnomalyDetectorInterface::class)
                 );
             }
 

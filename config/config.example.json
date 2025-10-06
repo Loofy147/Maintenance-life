@@ -27,6 +27,14 @@
         },
         "max_login_attempts": 5
     },
+    "machine_learning": {
+        "anomaly_detection": {
+            "moving_average": {
+                "window_size": 20,
+                "threshold_multiplier": 3.0
+            }
+        }
+    },
     "system": {
         "config_path": "/app/config/config.json",
         "paths": {

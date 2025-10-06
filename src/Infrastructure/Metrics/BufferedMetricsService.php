@@ -95,6 +95,8 @@ class BufferedMetricsService implements MetricsInterface
         $report['metrics']['security_events'] = $this->cache->get('metrics:security.events', 0);
         $report['metrics']['error_rate'] = $this->calculateErrorRate();
 
+        $this->storeHistoricalReport($report['metrics']);
+
         return $report;
     }
 
@@ -160,5 +162,26 @@ class BufferedMetricsService implements MetricsInterface
         $total = (int)$this->cache->get($this->buildKey('requests.total', []), 1); // Avoid division by zero
 
         return ($errors / $total) * 100;
+    }
+
+    public function getHistorical(int $limit = 100): array
+    {
+        $historicalData = $this->cache->get('metrics:historical', []);
+        return array_slice($historicalData, 0, $limit);
+    }
+
+    private function storeHistoricalReport(array $metrics): void
+    {
+        $historicalKey = 'metrics:historical';
+        $maxEntries = 200; // Keep a reasonable number of historical entries
+
+        $historicalData = $this->cache->get($historicalKey, []);
+        array_unshift($historicalData, $metrics);
+
+        if (count($historicalData) > $maxEntries) {
+            $historicalData = array_slice($historicalData, 0, $maxEntries);
+        }
+
+        $this->cache->set($historicalKey, $historicalData);
     }
 }
