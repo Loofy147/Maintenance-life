@@ -19,7 +19,7 @@ class HealthCheckServiceProvider implements ServiceProviderInterface
             $aggregator = new HealthCheckAggregator();
             $aggregator->addCheck(new DatabaseHealthCheck($c->get(\PDO::class)));
             $aggregator->addCheck(new CacheHealthCheck($c->get(CacheInterface::class)));
-            $aggregator->addCheck(new DiskSpaceHealthCheck($paths['storage']));
+            $aggregator->addCheck(new DiskSpaceHealthCheck($paths['storage'], $c->get(CacheInterface::class)));
             return $aggregator;
         });
     }
