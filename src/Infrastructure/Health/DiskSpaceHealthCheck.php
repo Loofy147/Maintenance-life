@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Infrastructure\Health;
 
+use MaintenancePro\Domain\Contracts\CacheInterface;
 use MaintenancePro\Domain\ValueObjects\HealthStatusValue;
 
 /**
@@ -10,19 +11,26 @@ use MaintenancePro\Domain\ValueObjects\HealthStatusValue;
  *
  * This check is critical because a full disk can lead to application-wide failures,
  * including the inability to write logs, cache files, or session data.
+ * The result of this check is cached to improve performance.
  */
 class DiskSpaceHealthCheck implements HealthCheckInterface
 {
+    private const CACHE_KEY = 'health_check.disk_space';
+    private const CACHE_TTL = 300; // 5 minutes
+
     private string $path;
     private float $warningThreshold;
+    private CacheInterface $cache;
 
     /**
      * @param string $path The path to check for disk space (e.g., '/var/www').
+     * @param CacheInterface $cache The cache service to store the result.
      * @param float $warningThreshold The usage percentage at which to trigger a warning (e.g., 90.0 for 90%).
      */
-    public function __construct(string $path, float $warningThreshold = 90.0)
+    public function __construct(string $path, CacheInterface $cache, float $warningThreshold = 90.0)
     {
         $this->path = $path;
+        $this->cache = $cache;
         $this->warningThreshold = $warningThreshold;
     }
 
@@ -31,15 +39,24 @@ class DiskSpaceHealthCheck implements HealthCheckInterface
      */
     public function check(): HealthStatusValue
     {
+        $cachedStatus = $this->cache->get(self::CACHE_KEY);
+        if ($cachedStatus instanceof HealthStatusValue) {
+            return $cachedStatus;
+        }
+
         if (!is_dir($this->path) || !is_readable($this->path)) {
-            return HealthStatusValue::unhealthy("Path '{$this->path}' is not a readable directory.");
+            $status = HealthStatusValue::unhealthy("Path '{$this->path}' is not a readable directory.");
+            $this->cache->set(self::CACHE_KEY, $status, self::CACHE_TTL);
+            return $status;
         }
 
         $free = @disk_free_space($this->path);
         $total = @disk_total_space($this->path);
 
         if ($total === false || $free === false) {
-            return HealthStatusValue::unhealthy("Could not determine disk space for path '{$this->path}'. Check permissions.");
+            $status = HealthStatusValue::unhealthy("Could not determine disk space for path '{$this->path}'. Check permissions.");
+            $this->cache->set(self::CACHE_KEY, $status, self::CACHE_TTL);
+            return $status;
         }
 
         $used = $total - $free;
@@ -60,14 +77,17 @@ class DiskSpaceHealthCheck implements HealthCheckInterface
                 $usedPercent,
                 $this->warningThreshold
             );
-            return HealthStatusValue::unhealthy($message, $details);
+            $status = HealthStatusValue::unhealthy($message, $details);
+        } else {
+            $message = sprintf(
+                'Disk space is OK: %.2f%% used.',
+                $usedPercent
+            );
+            $status = HealthStatusValue::healthy($message, $details);
         }
 
-        $message = sprintf(
-            'Disk space is OK: %.2f%% used.',
-            $usedPercent
-        );
-        return HealthStatusValue::healthy($message, $details);
+        $this->cache->set(self::CACHE_KEY, $status, self::CACHE_TTL);
+        return $status;
     }
 
     /**
