@@ -6,7 +6,7 @@ namespace MaintenancePro\Application\Service;
 use MaintenancePro\Application\LoggerInterface;
 use MaintenancePro\Domain\Contracts\CacheInterface;
 use MaintenancePro\Domain\Contracts\ConfigurationInterface;
-use MaintenancePro\Domain\ValueObject\IPAddress;
+use MaintenancePro\Domain\ValueObjects\IPAddress;
 
 class AccessControlService
 {
@@ -63,6 +63,9 @@ class AccessControlService
             $this->config->set('access.whitelist.ips', $whitelist);
             $this->config->save();
 
+            $cacheKey = 'whitelist_check_' . md5($ip);
+            $this->cache->delete($cacheKey);
+
             $this->logger->info("IP added to whitelist: {$ip}");
         }
     }
@@ -81,6 +84,9 @@ class AccessControlService
 
             $this->config->set('access.whitelist.ips', $whitelist);
             $this->config->save();
+
+            $cacheKey = 'whitelist_check_' . md5($ip);
+            $this->cache->delete($cacheKey);
 
             $this->logger->info("IP removed from whitelist: {$ip}");
         }
