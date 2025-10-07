@@ -6,8 +6,8 @@ namespace MaintenancePro\Application\Service;
 use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Domain\Event\SecurityThreatDetectedEvent;
 use MaintenancePro\Application\Event\EventDispatcherInterface;
-use MaintenancePro\Infrastructure\Cache\CacheInterface;
-use MaintenancePro\Infrastructure\Logger\LoggerInterface;
+use MaintenancePro\Domain\Contracts\CacheInterface;
+use MaintenancePro\Application\LoggerInterface;
 
 class SecurityService implements SecurityServiceInterface
 {
@@ -97,14 +97,20 @@ class SecurityService implements SecurityServiceInterface
 
     public function blockIP(string $ip): void
     {
-        $this->blockedIPs[] = $ip;
-        $this->cache->set('blocked_ips', $this->blockedIPs, 86400);
+        // Load the latest list, modify, and then save to prevent race conditions.
+        $this->loadBlockedIPs();
+        if (!in_array($ip, $this->blockedIPs, true)) {
+            $this->blockedIPs[] = $ip;
+            $this->cache->set('blocked_ips', $this->blockedIPs, 86400);
+        }
 
         $this->logger->warning("IP blocked: {$ip}");
     }
 
     public function isIPBlocked(string $ip): bool
     {
+        // Always load the latest list from cache to prevent using stale data.
+        $this->loadBlockedIPs();
         return in_array($ip, $this->blockedIPs, true);
     }
 
