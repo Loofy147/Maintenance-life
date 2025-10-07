@@ -76,20 +76,20 @@ class MaintenanceSessionTest extends TestCase
         $this->assertFalse($session->isActive());
     }
 
-    public function testCanBeCancelledWhenActive()
+    public function testCannotCancelWhenActive()
     {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Cannot cancel a session that is not scheduled.');
+
         $session = new MaintenanceSession($this->timePeriod, 'Test');
         $session->start();
         $session->cancel();
-
-        $this->assertSame(MaintenanceStatus::CANCELLED, $session->getStatus());
-        $this->assertFalse($session->isActive());
     }
 
     public function testCannotCancelWhenCompleted()
     {
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('Cannot cancel a completed maintenance session');
+        $this->expectExceptionMessage('Cannot cancel a session that is not scheduled.');
 
         $session = new MaintenanceSession($this->timePeriod, 'Test');
         $session->start();

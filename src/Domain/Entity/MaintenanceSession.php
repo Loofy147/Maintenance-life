@@ -49,8 +49,8 @@ class MaintenanceSession
 
     public function cancel(): void
     {
-        if ($this->status === MaintenanceStatus::COMPLETED) {
-            throw new \LogicException('Cannot cancel a completed maintenance session');
+        if ($this->status !== MaintenanceStatus::SCHEDULED) {
+            throw new \LogicException('Cannot cancel a session that is not scheduled.');
         }
 
         $this->status = MaintenanceStatus::CANCELLED;
