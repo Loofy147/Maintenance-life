@@ -11,17 +11,32 @@ use MaintenancePro\Infrastructure\CircuitBreaker\CircuitBreakerInterface;
 use MaintenancePro\Infrastructure\Health\HealthCheckAggregator;
 use MaintenancePro\Infrastructure\Service\Mock\MockExternalService;
 
+/**
+ * Handles all command-line interface (CLI) interactions for the application.
+ *
+ * This class parses command-line arguments and dispatches them to the appropriate
+ * command methods.
+ */
 class CliHandler
 {
     private Kernel $app;
     private array $argv;
 
+    /**
+     * CliHandler constructor.
+     *
+     * @param Kernel $app  The application kernel.
+     * @param array  $argv The command-line arguments.
+     */
     public function __construct(Kernel $app, array $argv)
     {
         $this->app = $app;
         $this->argv = $argv;
     }
 
+    /**
+     * Handles the incoming CLI request by parsing the command and executing it.
+     */
     public function handle(): void
     {
         $startTime = microtime(true);
@@ -48,6 +63,9 @@ class CliHandler
         $metrics->timing('cli.command.time', (microtime(true) - $startTime) * 1000, ['command' => $command]);
     }
 
+    /**
+     * Command to enable maintenance mode.
+     */
     private function commandEnable(): void
     {
         $reason = $this->argv[2] ?? 'Manual maintenance';
@@ -64,6 +82,9 @@ class CliHandler
         echo "  End time: " . $endTime->format('Y-m-d H:i:s') . "\n";
     }
 
+    /**
+     * Command to disable maintenance mode.
+     */
     private function commandDisable(): void
     {
         /** @var MaintenanceService $maintenance */
@@ -73,6 +94,9 @@ class CliHandler
         echo "✓ Maintenance mode disabled\n";
     }
 
+    /**
+     * Command to check the current status of maintenance mode.
+     */
     private function commandStatus(): void
     {
         /** @var MaintenanceService $maintenance */
@@ -91,6 +115,9 @@ class CliHandler
         }
     }
 
+    /**
+     * Command to add an IP address to the whitelist.
+     */
     private function commandWhitelistAdd(): void
     {
         $ip = $this->argv[2] ?? null;
@@ -108,6 +135,9 @@ class CliHandler
         echo "✓ IP added to whitelist: {$ip}\n";
     }
 
+    /**
+     * Command to remove an IP address from the whitelist.
+     */
     private function commandWhitelistRemove(): void
     {
         $ip = $this->argv[2] ?? null;
@@ -125,6 +155,9 @@ class CliHandler
         echo "✓ IP removed from whitelist: {$ip}\n";
     }
 
+    /**
+     * Command to display a report of performance metrics.
+     */
     private function commandMetricsReport(): void
     {
         /** @var MetricsInterface $metrics */
@@ -153,6 +186,9 @@ class CliHandler
         }
     }
 
+    /**
+     * Command to run system health checks.
+     */
     private function commandHealthCheck(): void
     {
         /** @var HealthCheckAggregator $healthCheck */
@@ -173,6 +209,9 @@ class CliHandler
         }
     }
 
+    /**
+     * Command to test the circuit breaker by calling a mock service.
+     */
     private function commandMockServiceCall(): void
     {
         /** @var CircuitBreakerInterface $circuitBreaker */
@@ -189,6 +228,9 @@ class CliHandler
         }
     }
 
+    /**
+     * Command to set the mock service to a failing state.
+     */
     private function commandMockServiceFail(): void
     {
         /** @var MockExternalService $mockService */
@@ -197,6 +239,9 @@ class CliHandler
         echo "Mock external service is now set to FAIL.\n";
     }
 
+    /**
+     * Command to set the mock service to a succeeding state.
+     */
     private function commandMockServiceSucceed(): void
     {
         /** @var MockExternalService $mockService */
@@ -205,6 +250,9 @@ class CliHandler
         echo "Mock external service is now set to SUCCEED.\n";
     }
 
+    /**
+     * Displays the help message with all available commands.
+     */
     private function showHelp(): void
     {
         echo <<<HELP

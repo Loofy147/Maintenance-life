@@ -14,8 +14,20 @@ use MaintenancePro\Application\ServiceContainer;
 use MaintenancePro\Domain\Event\MaintenanceDisabledEvent;
 use MaintenancePro\Domain\Event\MaintenanceEnabledEvent;
 
+/**
+ * Registers the event dispatcher and its listeners.
+ *
+ * This provider sets up the eventing system by registering the event dispatcher,
+ * notification listeners (like Slack and Webhooks), and attaching those listeners
+ * to the relevant maintenance events.
+ */
 class EventServiceProvider implements ServiceProviderInterface
 {
+    /**
+     * Registers the event services in the service container.
+     *
+     * @param ServiceContainer $container The service container.
+     */
     public function register(ServiceContainer $container): void
     {
         $container->singleton(WebhookNotificationListener::class, function ($c) {
@@ -26,7 +38,7 @@ class EventServiceProvider implements ServiceProviderInterface
             return new SlackNotificationListener($c->get(SlackNotificationServiceInterface::class));
         });
 
-        $container->singleton(EventDispatcherInterface::class, function($c) {
+        $container->singleton(EventDispatcherInterface::class, function ($c) {
             $dispatcher = new EventDispatcher($c->get(LoggerInterface::class));
 
             // Register listeners

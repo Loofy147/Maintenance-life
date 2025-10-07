@@ -8,10 +8,18 @@ use MaintenancePro\Domain\Entity\User;
 use MaintenancePro\Domain\Repository\UserRepositoryInterface;
 use OTPHP\TOTP;
 
+/**
+ * Handles user authentication, session management, and two-factor authentication.
+ */
 class AuthService implements AuthServiceInterface
 {
     private UserRepositoryInterface $userRepository;
 
+    /**
+     * AuthService constructor.
+     *
+     * @param UserRepositoryInterface $userRepository The repository for accessing user data.
+     */
     public function __construct(UserRepositoryInterface $userRepository)
     {
         $this->userRepository = $userRepository;
@@ -20,6 +28,9 @@ class AuthService implements AuthServiceInterface
         }
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function login(string $username, string $password): bool
     {
         $user = $this->userRepository->findByUsername($username);
@@ -37,16 +48,25 @@ class AuthService implements AuthServiceInterface
         return true;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function logout(): void
     {
         session_destroy();
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function isLoggedIn(): bool
     {
         return isset($_SESSION['user_id']);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getLoggedInUser(): ?User
     {
         if (!$this->isLoggedIn()) {
@@ -56,6 +76,9 @@ class AuthService implements AuthServiceInterface
         return $this->userRepository->findById((int) $_SESSION['user_id']);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function verifyTwoFactorCode(User $user, string $code): bool
     {
         if (!$user->isTwoFactorEnabled()) {
@@ -73,6 +96,9 @@ class AuthService implements AuthServiceInterface
         return $isValid;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function generateTwoFactorSecret(User $user): string
     {
         $totp = TOTP::create();

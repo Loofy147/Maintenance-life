@@ -15,6 +15,12 @@ use MaintenancePro\Infrastructure\Health\HealthCheckAggregator;
 use MaintenancePro\Presentation\Template\TemplateRendererInterface;
 use OTPHP\TOTP;
 
+/**
+ * Handles all requests for the admin dashboard.
+ *
+ * This controller manages login, logout, 2FA, and all administrative actions
+ * like enabling/disabling maintenance mode and managing the IP whitelist.
+ */
 class AdminController
 {
     private TemplateRendererInterface $renderer;
@@ -27,6 +33,19 @@ class AdminController
     private AuthServiceInterface $authService;
     private UserRepositoryInterface $userRepository;
 
+    /**
+     * AdminController constructor.
+     *
+     * @param TemplateRendererInterface $renderer              For rendering admin templates.
+     * @param MaintenanceService        $maintenanceService    For managing maintenance mode.
+     * @param AccessControlService      $accessControlService  For managing IP whitelists.
+     * @param MetricsInterface          $metricsService        For retrieving performance metrics.
+     * @param ConfigurationInterface    $config                For accessing application configuration.
+     * @param HealthCheckAggregator     $healthCheckAggregator For running system health checks.
+     * @param CircuitBreakerInterface   $circuitBreaker        For checking circuit breaker status.
+     * @param AuthServiceInterface      $authService           For handling user authentication.
+     * @param UserRepositoryInterface   $userRepository        For accessing user data.
+     */
     public function __construct(
         TemplateRendererInterface $renderer,
         MaintenanceService $maintenanceService,
@@ -48,6 +67,7 @@ class AdminController
         $this->authService = $authService;
         $this->userRepository = $userRepository;
 
+        // Ensure the default admin user exists for demo purposes.
         if ($this->userRepository->findByUsername('admin') === null) {
             $password = 'password';
             $user = new User('admin', password_hash($password, PASSWORD_DEFAULT));
@@ -55,6 +75,10 @@ class AdminController
         }
     }
 
+    /**
+     * Ensures that the user is logged in before allowing access to a method.
+     * Redirects to the login page if the user is not authenticated.
+     */
     private function loginRequired(): void
     {
         if (!$this->authService->isLoggedIn()) {
@@ -63,11 +87,19 @@ class AdminController
         }
     }
 
+    /**
+     * Displays the admin login form.
+     *
+     * @return string The rendered HTML for the login page.
+     */
     public function showLoginForm(): string
     {
         return $this->renderer->render('admin/login.phtml');
     }
 
+    /**
+     * Handles the login form submission.
+     */
     public function login(): void
     {
         $username = $_POST['username'] ?? '';
@@ -75,6 +107,7 @@ class AdminController
 
         if ($this->authService->login($username, $password)) {
             $user = $this->userRepository->findByUsername($username);
+            // Redirect to 2FA page if enabled, otherwise to the dashboard.
             if ($user && $user->isTwoFactorEnabled()) {
                 header('Location: /admin/2fa');
             } else {
@@ -83,10 +116,16 @@ class AdminController
             exit;
         }
 
+        // On failure, redirect back to login with an error.
         header('Location: /admin/login?error=1');
         exit;
     }
 
+    /**
+     * Displays the two-factor authentication form.
+     *
+     * @return string The rendered HTML for the 2FA page.
+     */
     public function showTwoFactorForm(): string
     {
         if (!isset($_SESSION['2fa_user_id'])) {
@@ -96,6 +135,9 @@ class AdminController
         return $this->renderer->render('admin/2fa.phtml');
     }
 
+    /**
+     * Handles the 2FA code verification.
+     */
     public function verifyTwoFactor(): void
     {
         $userId = $_SESSION['2fa_user_id'] ?? null;
@@ -117,6 +159,9 @@ class AdminController
         exit;
     }
 
+    /**
+     * Logs the user out and redirects to the login page.
+     */
     public function logout(): void
     {
         $this->authService->logout();
@@ -124,12 +169,18 @@ class AdminController
         exit;
     }
 
+    /**
+     * Displays the main admin dashboard.
+     *
+     * @return string The rendered HTML for the dashboard.
+     */
     public function index(): string
     {
         $this->loginRequired();
 
         $user = $this->userRepository->findByUsername('admin');
         $qrCodeUrl = null;
+        // Generate a QR code for 2FA setup if it's not already enabled.
         if ($user && !$user->isTwoFactorEnabled()) {
             $secret = $this->authService->generateTwoFactorSecret($user);
             $totp = TOTP::createFromSecret($secret);
@@ -151,6 +202,9 @@ class AdminController
         return $this->renderer->render('admin/dashboard.phtml', $data);
     }
 
+    /**
+     * Enables maintenance mode.
+     */
     public function enableMaintenance(): void
     {
         $this->loginRequired();
@@ -160,6 +214,9 @@ class AdminController
         exit;
     }
 
+    /**
+     * Disables maintenance mode.
+     */
     public function disableMaintenance(): void
     {
         $this->loginRequired();
@@ -168,6 +225,9 @@ class AdminController
         exit;
     }
 
+    /**
+     * Adds an IP address to the whitelist.
+     */
     public function addWhitelistIp(): void
     {
         $this->loginRequired();
@@ -179,6 +239,9 @@ class AdminController
         exit;
     }
 
+    /**
+     * Removes an IP address from the whitelist.
+     */
     public function removeWhitelistIp(): void
     {
         $this->loginRequired();

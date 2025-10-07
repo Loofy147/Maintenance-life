@@ -9,10 +9,18 @@ use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Infrastructure\MachineLearning\MovingAverageAnomalyDetector;
 use MaintenancePro\Application\ServiceContainer;
 
+/**
+ * Registers the machine learning services for the application.
+ *
+ * This provider is responsible for setting up services related to machine
+ * learning, such as the anomaly detector.
+ */
 class MachineLearningServiceProvider implements ServiceProviderInterface
 {
     /**
-     * @param ServiceContainer $container
+     * Registers the anomaly detector service in the service container.
+     *
+     * @param ServiceContainer $container The service container.
      */
     public function register(ServiceContainer $container): void
     {

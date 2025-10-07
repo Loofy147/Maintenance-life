@@ -15,11 +15,19 @@ use MaintenancePro\Infrastructure\Health\HealthCheckAggregator;
 use MaintenancePro\Presentation\Template\TemplateRendererInterface;
 use MaintenancePro\Presentation\Web\Controller\AdminController;
 
+/**
+ * Registers the application's controllers in the service container.
+ */
 class ControllerServiceProvider implements ServiceProviderInterface
 {
+    /**
+     * Registers the AdminController with all its dependencies.
+     *
+     * @param ServiceContainer $container The service container.
+     */
     public function register(ServiceContainer $container): void
     {
-        $container->singleton(AdminController::class, function($c) {
+        $container->singleton(AdminController::class, function ($c) {
             return new AdminController(
                 $c->get(TemplateRendererInterface::class),
                 $c->get(MaintenanceService::class),

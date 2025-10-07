@@ -128,12 +128,22 @@ class BufferedMetricsService implements MetricsInterface
         $this->buffer = [];
     }
 
+    /**
+     * Builds a standardized cache key for a given metric and tags.
+     *
+     * @param string               $metric The name of the metric.
+     * @param array<string, mixed> $tags   An array of tags for the metric.
+     * @return string The generated cache key.
+     */
     private function buildKey(string $metric, array $tags): string
     {
         $tagString = empty($tags) ? '' : ':' . http_build_query($tags);
         return "metrics:{$metric}{$tagString}";
     }
 
+    /**
+     * Flushes the buffer to the cache if it has reached its maximum size.
+     */
     private function flushIfNeeded(): void
     {
         if (count($this->buffer) >= $this->bufferSize) {
@@ -141,6 +151,11 @@ class BufferedMetricsService implements MetricsInterface
         }
     }
 
+    /**
+     * Calculates the cache hit rate based on stored hit and miss counts.
+     *
+     * @return float The cache hit rate as a percentage.
+     */
     private function calculateCacheHitRate(): float
     {
         $hits = (int)$this->cache->get($this->buildKey('cache.hits', []), 0);
@@ -150,12 +165,22 @@ class BufferedMetricsService implements MetricsInterface
         return $total > 0 ? ($hits / $total) * 100 : 0;
     }
 
+    /**
+     * Calculates the average response time from stored timing data.
+     *
+     * @return float The average response time in milliseconds.
+     */
     private function getAverageResponseTime(): float
     {
         $timings = $this->cache->get($this->buildKey('request.time', []), []);
         return empty($timings) ? 0 : array_sum($timings) / count($timings);
     }
 
+    /**
+     * Calculates the error rate based on stored error and request counts.
+     *
+     * @return float The error rate as a percentage.
+     */
     private function calculateErrorRate(): float
     {
         $errors = (int)$this->cache->get($this->buildKey('errors.total', []), 0);
@@ -164,12 +189,20 @@ class BufferedMetricsService implements MetricsInterface
         return ($errors / $total) * 100;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getHistorical(int $limit = 100): array
     {
         $historicalData = $this->cache->get('metrics:historical', []);
         return array_slice($historicalData, 0, $limit);
     }
 
+    /**
+     * Stores a snapshot of the latest metrics report for historical analysis.
+     *
+     * @param array<string, mixed> $metrics The metrics data to store.
+     */
     private function storeHistoricalReport(array $metrics): void
     {
         $historicalKey = 'metrics:historical';

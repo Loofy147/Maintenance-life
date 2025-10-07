@@ -7,16 +7,29 @@ use MaintenancePro\Domain\Entity\User;
 use MaintenancePro\Domain\Repository\UserRepositoryInterface;
 use PDO;
 
+/**
+ * A SQLite-based implementation of the UserRepositoryInterface.
+ *
+ * This repository manages the persistence of User entities in a SQLite database.
+ */
 class SqliteUserRepository implements UserRepositoryInterface
 {
     private PDO $pdo;
 
+    /**
+     * SqliteUserRepository constructor.
+     *
+     * @param PDO $pdo The PDO database connection.
+     */
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
         $this->createTable();
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function findByUsername(string $username): ?User
     {
         $stmt = $this->pdo->prepare('SELECT * FROM users WHERE username = :username');
@@ -37,6 +50,9 @@ class SqliteUserRepository implements UserRepositoryInterface
         return $user;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function findById(int $id): ?User
     {
         $stmt = $this->pdo->prepare('SELECT * FROM users WHERE id = :id');
@@ -57,6 +73,9 @@ class SqliteUserRepository implements UserRepositoryInterface
         return $user;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function save(User $user): void
     {
         if ($user->getId()) {
@@ -80,6 +99,9 @@ class SqliteUserRepository implements UserRepositoryInterface
         }
     }
 
+    /**
+     * Creates the `users` table in the database if it doesn't already exist.
+     */
     private function createTable(): void
     {
         $this->pdo->exec('

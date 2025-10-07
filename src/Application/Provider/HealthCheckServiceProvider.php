@@ -11,11 +11,23 @@ use MaintenancePro\Infrastructure\Health\DiskSpaceHealthCheck;
 use MaintenancePro\Infrastructure\Health\HealthCheckAggregator;
 use MaintenancePro\Infrastructure\FileSystem\FileSystemProvider;
 
+/**
+ * Registers the application's health check services.
+ *
+ * This provider sets up the HealthCheckAggregator and registers individual
+ * health checks for different components of the system, such as the database,
+ * cache, and disk space.
+ */
 class HealthCheckServiceProvider implements ServiceProviderInterface
 {
+    /**
+     * Registers the health check services in the service container.
+     *
+     * @param ServiceContainer $container The service container.
+     */
     public function register(ServiceContainer $container): void
     {
-        $container->singleton(FileSystemProvider::class, fn() => new FileSystemProvider());
+        $container->singleton(FileSystemProvider::class, fn () => new FileSystemProvider());
 
         $container->singleton(HealthCheckAggregator::class, function ($c) {
             $paths = $c->get('paths');

@@ -18,7 +18,67 @@ MaintenancePro is a professional-grade, enterprise-ready maintenance mode system
 *   **PSR-3 Compatible Logging:** Integrated with Monolog for powerful and flexible logging to multiple channels.
 *   **Full-Featured CLI:** A comprehensive command-line interface for managing all aspects of the system.
 
+## 🚀 Getting Started
+
+Follow these instructions to get a copy of the project up and running on your local machine for development and testing purposes.
+
+### Prerequisites
+
+*   PHP 8.1 or greater
+*   Composer
+
+### Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-username/maintenance-pro.git
+    cd maintenance-pro
+    ```
+
+2.  **Install Composer dependencies:**
+    If you don't have Composer installed, you can download it locally:
+    ```bash
+    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+    php composer-setup.php
+    php -r "unlink('composer-setup.php');"
+    ```
+    Then, install the project dependencies:
+    ```bash
+    php composer.phar install
+    ```
+
+3.  **Set up the configuration file:**
+    Copy the example configuration file to create your own local configuration.
+    ```bash
+    cp config/config.example.json config/config.json
+    ```
+    You can now edit `config/config.json` to customize your setup (e.g., enable 2FA, set up Slack webhooks). The default admin credentials are `admin` / `password`.
+
+4.  **Run the application:**
+    You can use PHP's built-in web server to run the application locally.
+    ```bash
+    php -S localhost:8000 -t public
+    ```
+    The application will be available at `http://localhost:8000`. The admin dashboard is at `http://localhost:8000/admin`.
+
+## 🏛️ Project Structure
+
+The project follows a layered architecture inspired by Domain-Driven Design (DDD) to ensure a clean separation of concerns.
+
+*   `src/`
+    *   `Domain/`: Contains the core business logic, entities, and rules of the application. This layer is independent of any framework or infrastructure details.
+    *   `Application/`: Orchestrates the domain logic. It contains application-specific services, commands, and use cases.
+    *   `Infrastructure/`: Provides concrete implementations of the interfaces defined in the Domain and Application layers. This includes database repositories, cache implementations, and third-party service integrations.
+    *   `Presentation/`: The outermost layer, responsible for handling user input and presenting data. This includes web controllers, CLI handlers, and templates.
+*   `config/`: Contains configuration files.
+*   `public/`: The web server root, containing the main `index.php` entry point.
+*   `bin/`: Contains the command-line entry point (`console`).
+*   `tests/`: Contains all unit and integration tests.
+*   `var/`: Directory for temporary files like logs, cache, and the SQLite database.
+
 ## 🚀 Usage
+
+The application can be managed through both a web-based admin dashboard and a command-line interface.
 
 ### Web Interface (Admin Dashboard)
 

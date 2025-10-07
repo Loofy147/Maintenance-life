@@ -9,12 +9,22 @@ use MaintenancePro\Application\LoggerInterface;
 use MaintenancePro\Application\Service\Contract\WebhookServiceInterface;
 use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 
+/**
+ * Service for sending notifications to generic webhooks.
+ */
 class WebhookService implements WebhookServiceInterface
 {
     private Client $client;
     private ConfigurationInterface $config;
     private LoggerInterface $logger;
 
+    /**
+     * WebhookService constructor.
+     *
+     * @param Client                 $client The Guzzle HTTP client for making requests.
+     * @param ConfigurationInterface $config The application configuration.
+     * @param LoggerInterface        $logger The logger for recording webhook status.
+     */
     public function __construct(
         Client $client,
         ConfigurationInterface $config,
@@ -25,6 +35,12 @@ class WebhookService implements WebhookServiceInterface
         $this->logger = $logger;
     }
 
+    /**
+     * Sends a payload to all configured webhook URLs.
+     *
+     * @param string               $event   The name of the event being triggered.
+     * @param array<string, mixed> $payload The data to be sent in the webhook payload.
+     */
     public function send(string $event, array $payload): void
     {
         $webhooks = $this->config->get('webhooks', []);
