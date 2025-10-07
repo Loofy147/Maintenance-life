@@ -56,4 +56,12 @@ interface MetricsInterface
      * Flushes the buffer to persist any pending metrics.
      */
     public function flush(): void;
+
+    /**
+     * Retrieves a series of historical metric data points.
+     *
+     * @param int $limit The number of data points to retrieve.
+     * @return array<int, array<string, mixed>>
+     */
+    public function getHistorical(int $limit = 100): array;
 }

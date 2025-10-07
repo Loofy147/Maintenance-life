@@ -14,6 +14,7 @@ use MaintenancePro\Application\Provider\DatabaseServiceProvider;
 use MaintenancePro\Application\Provider\EventServiceProvider;
 use MaintenancePro\Application\Provider\HealthCheckServiceProvider;
 use MaintenancePro\Application\Provider\LogServiceProvider;
+use MaintenancePro\Application\Provider\MachineLearningServiceProvider;
 use MaintenancePro\Application\Provider\MetricsServiceProvider;
 use MaintenancePro\Application\Provider\TemplateServiceProvider;
 use MaintenancePro\Domain\Contracts\CacheInterface;
@@ -55,6 +56,7 @@ class Kernel
         ControllerServiceProvider::class,
         HealthCheckServiceProvider::class,
         CircuitBreakerServiceProvider::class,
+        MachineLearningServiceProvider::class,
     ];
 
     /**
