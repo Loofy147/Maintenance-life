@@ -52,10 +52,8 @@ class AuthService implements AuthServiceInterface
         if (!$this->isLoggedIn()) {
             return null;
         }
-        // This is not ideal, we should have a findById method in the repository.
-        // For now, we'll just re-fetch by username which is not stored in session.
-        // This part needs improvement in a real application.
-        return null;
+
+        return $this->userRepository->findById((int) $_SESSION['user_id']);
     }
 
     public function verifyTwoFactorCode(User $user, string $code): bool
