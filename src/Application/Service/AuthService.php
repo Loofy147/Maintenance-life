@@ -6,7 +6,7 @@ namespace MaintenancePro\Application\Service;
 use MaintenancePro\Application\Service\Contract\AuthServiceInterface;
 use MaintenancePro\Domain\Entity\User;
 use MaintenancePro\Domain\Repository\UserRepositoryInterface;
-use SpomkyLabs\OTPHP\TOTP;
+use OTPHP\TOTP;
 
 class AuthService implements AuthServiceInterface
 {

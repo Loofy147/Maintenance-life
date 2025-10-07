@@ -13,7 +13,7 @@ use MaintenancePro\Domain\Repository\UserRepositoryInterface;
 use MaintenancePro\Infrastructure\CircuitBreaker\CircuitBreakerInterface;
 use MaintenancePro\Infrastructure\Health\HealthCheckAggregator;
 use MaintenancePro\Presentation\Template\TemplateRendererInterface;
-use SpomkyLabs\OTPHP\TOTP;
+use OTPHP\TOTP;
 
 class AdminController
 {
@@ -101,8 +101,12 @@ class AdminController
         $userId = $_SESSION['2fa_user_id'] ?? null;
         $code = $_POST['code'] ?? '';
 
-        // A findById method would be better here.
-        $user = $this->userRepository->findByUsername('admin');
+        if ($userId === null) {
+            header('Location: /admin/login');
+            exit;
+        }
+
+        $user = $this->userRepository->findById((int)$userId);
 
         if ($user && $this->authService->verifyTwoFactorCode($user, $code)) {
             header('Location: /admin');
