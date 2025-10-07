@@ -12,6 +12,12 @@ use MaintenancePro\Application\Event\EventDispatcherInterface;
 use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Infrastructure\Logger\LoggerInterface;
 
+/**
+ * Manages the application's maintenance mode state.
+ *
+ * This service provides methods to enable and disable maintenance mode, check its
+ * status, and determine if incoming requests should be blocked.
+ */
 class MaintenanceService
 {
     private ConfigurationInterface $config;
@@ -20,6 +26,14 @@ class MaintenanceService
     private MaintenanceStrategyInterface $strategy;
     private ?MaintenanceSession $currentSession = null;
 
+    /**
+     * MaintenanceService constructor.
+     *
+     * @param ConfigurationInterface       $config          The application configuration.
+     * @param EventDispatcherInterface     $eventDispatcher The event dispatcher for maintenance events.
+     * @param LoggerInterface              $logger          The logger for recording maintenance state changes.
+     * @param MaintenanceStrategyInterface $strategy        The strategy for determining maintenance mode behavior.
+     */
     public function __construct(
         ConfigurationInterface $config,
         EventDispatcherInterface $eventDispatcher,
@@ -33,7 +47,12 @@ class MaintenanceService
     }
 
     /**
-     * Enable maintenance mode
+     * Enables maintenance mode for a specified duration.
+     *
+     * @param string                    $reason  The reason for enabling maintenance mode.
+     * @param \DateTimeImmutable|null $endTime The time when maintenance mode should end. Defaults to 1 hour from now.
+     * @return MaintenanceSession The created maintenance session.
+     * @throws \LogicException If maintenance mode is already enabled.
      */
     public function enable(string $reason, ?\DateTimeImmutable $endTime = null): MaintenanceSession
     {
@@ -65,7 +84,9 @@ class MaintenanceService
     }
 
     /**
-     * Disable maintenance mode
+     * Disables maintenance mode.
+     *
+     * @throws \LogicException If maintenance mode is not currently enabled.
      */
     public function disable(): void
     {
@@ -92,7 +113,9 @@ class MaintenanceService
     }
 
     /**
-     * Check if maintenance mode is enabled
+     * Checks if maintenance mode is currently enabled in the configuration.
+     *
+     * @return bool True if maintenance mode is enabled, false otherwise.
      */
     public function isEnabled(): bool
     {
@@ -100,7 +123,10 @@ class MaintenanceService
     }
 
     /**
-     * Check if request should be blocked
+     * Determines whether an incoming request should be blocked based on the current maintenance state and strategy.
+     *
+     * @param array<string, mixed> $context The request context (e.g., IP address, user role).
+     * @return bool True if the request should be blocked, false otherwise.
      */
     public function shouldBlock(array $context): bool
     {
@@ -112,7 +138,9 @@ class MaintenanceService
     }
 
     /**
-     * Get current session
+     * Gets the current active maintenance session.
+     *
+     * @return MaintenanceSession|null The current session, or null if none is active.
      */
     public function getCurrentSession(): ?MaintenanceSession
     {

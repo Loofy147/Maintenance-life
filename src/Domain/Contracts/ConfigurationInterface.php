@@ -3,6 +3,12 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Domain\Contracts;
 
+/**
+ * Interface for managing application configuration settings.
+ *
+ * This interface defines the contract for loading, accessing, and modifying
+ * configuration parameters within the application.
+ */
 interface ConfigurationInterface
 {
     /**

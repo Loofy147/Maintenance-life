@@ -20,10 +20,12 @@ class IntelligentMaintenanceStrategy implements MaintenanceStrategyInterface
     private AnomalyDetectorInterface $anomalyDetector;
 
     /**
-     * @param ConfigurationInterface $config
-     * @param MetricsInterface $metrics
-     * @param HealthCheckAggregator $healthCheckAggregator
-     * @param AnomalyDetectorInterface $anomalyDetector
+     * IntelligentMaintenanceStrategy constructor.
+     *
+     * @param ConfigurationInterface   $config                The application configuration.
+     * @param MetricsInterface         $metrics               The metrics service for performance data.
+     * @param HealthCheckAggregator    $healthCheckAggregator The health check aggregator for system status.
+     * @param AnomalyDetectorInterface $anomalyDetector       The anomaly detector for identifying issues.
      */
     public function __construct(
         ConfigurationInterface $config,

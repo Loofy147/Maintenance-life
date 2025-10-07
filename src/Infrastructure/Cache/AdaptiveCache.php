@@ -20,6 +20,11 @@ class AdaptiveCache implements CacheInterface
     private int $persistentHits = 0;
     private int $misses = 0;
 
+    /**
+     * AdaptiveCache constructor.
+     *
+     * @param CacheInterface $persistentCache The underlying persistent cache layer.
+     */
     public function __construct(CacheInterface $persistentCache)
     {
         $this->persistentCache = $persistentCache;

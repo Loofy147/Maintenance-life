@@ -8,8 +8,21 @@ use MaintenancePro\Application\ServiceContainer;
 use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Infrastructure\Configuration\JsonConfiguration;
 
+/**
+ * Registers the application's configuration service.
+ *
+ * This provider is responsible for loading the application's configuration from
+ * a JSON file, creating a default configuration if one doesn't exist, and
+ * binding the ConfigurationInterface to the JsonConfiguration implementation.
+ */
 class ConfigurationServiceProvider implements ServiceProviderInterface
 {
+    /**
+     * Registers the configuration service in the service container.
+     *
+     * @param ServiceContainer $container The service container.
+     * @throws \RuntimeException If the configuration cannot be loaded or is invalid.
+     */
     public function register(ServiceContainer $container): void
     {
         $container->singleton(ConfigurationInterface::class, function ($c) {

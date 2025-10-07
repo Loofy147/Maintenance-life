@@ -5,8 +5,16 @@ namespace MaintenancePro\Domain\Event;
 
 use MaintenancePro\Domain\Entity\MaintenanceSession;
 
+/**
+ * Event fired when a maintenance session is enabled.
+ */
 class MaintenanceEnabledEvent extends BaseEvent
 {
+    /**
+     * MaintenanceEnabledEvent constructor.
+     *
+     * @param MaintenanceSession $session The maintenance session that was enabled.
+     */
     public function __construct(MaintenanceSession $session)
     {
         parent::__construct('maintenance.enabled', [

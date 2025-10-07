@@ -5,6 +5,12 @@ namespace MaintenancePro\Infrastructure\Cache;
 
 use MaintenancePro\Domain\Contracts\CacheInterface;
 
+/**
+ * A persistent cache implementation that stores data in the filesystem.
+ *
+ * This class also maintains a request-scoped in-memory cache to avoid
+ * redundant file reads within the same request lifecycle.
+ */
 class FileCache implements CacheInterface
 {
     private string $cacheDir;
@@ -12,6 +18,11 @@ class FileCache implements CacheInterface
     private int $hits = 0;
     private int $misses = 0;
 
+    /**
+     * FileCache constructor.
+     *
+     * @param string $cacheDir The directory where cache files will be stored.
+     */
     public function __construct(string $cacheDir)
     {
         $this->cacheDir = rtrim($cacheDir, '/');
@@ -21,6 +32,9 @@ class FileCache implements CacheInterface
         }
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function get(string $key, $default = null)
     {
         if (isset($this->memoryCache[$key])) {
@@ -48,6 +62,9 @@ class FileCache implements CacheInterface
         return $data['value'];
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function set(string $key, $value, int $ttl = 3600): bool
     {
         $this->memoryCache[$key] = $value;
@@ -61,11 +78,17 @@ class FileCache implements CacheInterface
         return file_put_contents($file, serialize($data), LOCK_EX) !== false;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function has(string $key): bool
     {
         return $this->get($key) !== null;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function delete(string $key): bool
     {
         unset($this->memoryCache[$key]);
@@ -79,6 +102,9 @@ class FileCache implements CacheInterface
         return true;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function clear(): bool
     {
         $this->memoryCache = [];
@@ -95,6 +121,9 @@ class FileCache implements CacheInterface
         return true;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getStats(): array
     {
         $total = $this->hits + $this->misses;
@@ -107,6 +136,12 @@ class FileCache implements CacheInterface
         ];
     }
 
+    /**
+     * Generates the full path for a cache file based on its key.
+     *
+     * @param string $key The cache key.
+     * @return string The absolute path to the cache file.
+     */
     private function getCacheFile(string $key): string
     {
         $hash = md5($key);

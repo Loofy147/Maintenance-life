@@ -202,7 +202,14 @@ class Kernel
     }
 
     /**
-     * Custom error handler.
+     * Custom error handler. Converts PHP errors into log messages.
+     *
+     * This method respects the `error_reporting` level.
+     *
+     * @param int    $errno   The level of the error raised.
+     * @param string $errstr  The error message.
+     * @param string $errfile The filename that the error was raised in.
+     * @param int    $errline The line number the error was raised at.
      */
     public function handleError(int $errno, string $errstr, string $errfile, int $errline): void
     {
@@ -213,7 +220,12 @@ class Kernel
     }
 
     /**
-     * Custom exception handler.
+     * Custom exception handler. Logs the exception and displays an error page.
+     *
+     * In debug mode, it shows a detailed exception page. Otherwise, it shows
+     * a generic error page.
+     *
+     * @param \Throwable $e The exception that was thrown.
      */
     public function handleException(\Throwable $e): void
     {
@@ -239,6 +251,11 @@ class Kernel
         exit;
     }
 
+    /**
+     * Renders a simple but detailed HTML page for debugging an exception.
+     *
+     * @param \Throwable $e The exception to render.
+     */
     private function renderDebugException(\Throwable $e): void
     {
         echo "<!DOCTYPE html>";

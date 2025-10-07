@@ -8,12 +8,22 @@ use MaintenancePro\Domain\Contracts\CacheInterface;
 use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Domain\ValueObjects\IPAddress;
 
+/**
+ * Manages access control rules, such as IP whitelisting and access keys.
+ */
 class AccessControlService
 {
     private ConfigurationInterface $config;
     private CacheInterface $cache;
     private LoggerInterface $logger;
 
+    /**
+     * AccessControlService constructor.
+     *
+     * @param ConfigurationInterface $config The application configuration.
+     * @param CacheInterface         $cache  The cache for storing access control checks.
+     * @param LoggerInterface        $logger The logger for recording access control events.
+     */
     public function __construct(
         ConfigurationInterface $config,
         CacheInterface $cache,
@@ -25,7 +35,12 @@ class AccessControlService
     }
 
     /**
-     * Check if IP is whitelisted
+     * Checks if a given IP address is whitelisted.
+     *
+     * The result is cached to improve performance for subsequent checks.
+     *
+     * @param IPAddress $ip The IP address to check.
+     * @return bool True if the IP is whitelisted, false otherwise.
      */
     public function isIPWhitelisted(IPAddress $ip): bool
     {
@@ -50,7 +65,9 @@ class AccessControlService
     }
 
     /**
-     * Add IP to whitelist
+     * Adds an IP address or CIDR range to the whitelist.
+     *
+     * @param string $ip The IP address or CIDR range to add.
      */
     public function addToWhitelist(string $ip): void
     {
@@ -71,7 +88,9 @@ class AccessControlService
     }
 
     /**
-     * Remove IP from whitelist
+     * Removes an IP address or CIDR range from the whitelist.
+     *
+     * @param string $ip The IP address or CIDR range to remove.
      */
     public function removeFromWhitelist(string $ip): void
     {
@@ -93,7 +112,10 @@ class AccessControlService
     }
 
     /**
-     * Check if access key is valid
+     * Validates an access key against the configured list of valid keys.
+     *
+     * @param string $key The access key to validate.
+     * @return bool True if the key is valid, false otherwise.
      */
     public function isValidAccessKey(string $key): bool
     {

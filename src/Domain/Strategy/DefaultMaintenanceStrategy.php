@@ -9,11 +9,20 @@ use MaintenancePro\Domain\Contracts\ConfigurationInterface;
 use MaintenancePro\Domain\ValueObject\IPAddress;
 use MaintenancePro\Domain\ValueObject\TimePeriod;
 
+/**
+ * A default maintenance strategy that checks for manual overrides and scheduled windows.
+ */
 class DefaultMaintenanceStrategy implements MaintenanceStrategyInterface
 {
     private ConfigurationInterface $config;
     private AccessControlService $accessControl;
 
+    /**
+     * DefaultMaintenanceStrategy constructor.
+     *
+     * @param ConfigurationInterface $config The application configuration.
+     * @param AccessControlService   $accessControl The access control service.
+     */
     public function __construct(
         ConfigurationInterface $config,
         AccessControlService $accessControl
@@ -22,6 +31,12 @@ class DefaultMaintenanceStrategy implements MaintenanceStrategyInterface
         $this->accessControl = $accessControl;
     }
 
+    /**
+     * Determines if maintenance should be activated based on configuration.
+     *
+     * @param array<string, mixed> $context The current application context.
+     * @return bool True if maintenance should be activated, false otherwise.
+     */
     public function shouldEnterMaintenance(array $context): bool
     {
         // Check if manually enabled
@@ -37,6 +52,12 @@ class DefaultMaintenanceStrategy implements MaintenanceStrategyInterface
         return false;
     }
 
+    /**
+     * Determines if a request should bypass maintenance based on IP, access key, or user role.
+     *
+     * @param array<string, mixed> $context The request context.
+     * @return bool True if the request should bypass maintenance, false otherwise.
+     */
     public function shouldBypassMaintenance(array $context): bool
     {
         // Check IP whitelist
@@ -68,11 +89,21 @@ class DefaultMaintenanceStrategy implements MaintenanceStrategyInterface
         return false;
     }
 
+    /**
+     * Gets the default maintenance duration from the configuration.
+     *
+     * @return int The duration in seconds.
+     */
     public function getMaintenanceDuration(): int
     {
         return $this->config->get('maintenance.default_duration', 3600);
     }
 
+    /**
+     * Checks if the current time is within the configured maintenance window.
+     *
+     * @return bool True if within the maintenance window, false otherwise.
+     */
     private function isInMaintenanceWindow(): bool
     {
         $now = new \DateTimeImmutable();

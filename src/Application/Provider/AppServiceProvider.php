@@ -28,11 +28,22 @@ use MaintenancePro\Domain\Repository\UserRepositoryInterface;
 use MaintenancePro\Infrastructure\Repository\SqliteUserRepository;
 use GuzzleHttp\Client;
 
+/**
+ * Registers core application services in the dependency injection container.
+ *
+ * This provider is responsible for bootstrapping essential services like authentication,
+ * notification services, security, and the maintenance strategy.
+ */
 class AppServiceProvider implements ServiceProviderInterface
 {
+    /**
+     * Registers the application's core services.
+     *
+     * @param ServiceContainer $container The service container.
+     */
     public function register(ServiceContainer $container): void
     {
-        $container->singleton(UserRepositoryInterface::class, function($c) {
+        $container->singleton(UserRepositoryInterface::class, function ($c) {
             return new SqliteUserRepository($c->get(\PDO::class));
         });
 
