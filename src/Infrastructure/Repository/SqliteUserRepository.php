@@ -37,6 +37,26 @@ class SqliteUserRepository implements UserRepositoryInterface
         return $user;
     }
 
+    public function findById(int $id): ?User
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM users WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$data) {
+            return null;
+        }
+
+        $user = new User($data['username'], $data['password']);
+        $user->setTwoFactorSecret($data['two_factor_secret']);
+        // This is a hack, as we don't have a proper hydrator
+        $reflector = new \ReflectionProperty(User::class, 'id');
+        $reflector->setAccessible(true);
+        $reflector->setValue($user, $data['id']);
+
+        return $user;
+    }
+
     public function save(User $user): void
     {
         if ($user->getId()) {
