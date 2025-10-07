@@ -17,7 +17,8 @@
     },
     "autoload": {
         "psr-4": {
-            "MaintenancePro\\": "src/"
+            "MaintenancePro\\": "src/",
+            "Tests\\": "tests/"
         }
     },
     "require-dev": {
