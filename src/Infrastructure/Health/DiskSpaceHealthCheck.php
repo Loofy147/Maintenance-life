@@ -5,6 +5,7 @@ namespace MaintenancePro\Infrastructure\Health;
 
 use MaintenancePro\Domain\Contracts\CacheInterface;
 use MaintenancePro\Domain\ValueObjects\HealthStatusValue;
+use MaintenancePro\Infrastructure\FileSystem\FileSystemProvider;
 
 /**
  * Performs a health check on the available disk space for a given path.
@@ -21,16 +22,23 @@ class DiskSpaceHealthCheck implements HealthCheckInterface
     private string $path;
     private float $warningThreshold;
     private CacheInterface $cache;
+    private FileSystemProvider $fileSystemProvider;
 
     /**
      * @param string $path The path to check for disk space (e.g., '/var/www').
      * @param CacheInterface $cache The cache service to store the result.
+     * @param FileSystemProvider $fileSystemProvider The file system provider.
      * @param float $warningThreshold The usage percentage at which to trigger a warning (e.g., 90.0 for 90%).
      */
-    public function __construct(string $path, CacheInterface $cache, float $warningThreshold = 90.0)
-    {
+    public function __construct(
+        string $path,
+        CacheInterface $cache,
+        FileSystemProvider $fileSystemProvider,
+        float $warningThreshold = 90.0
+    ) {
         $this->path = $path;
         $this->cache = $cache;
+        $this->fileSystemProvider = $fileSystemProvider;
         $this->warningThreshold = $warningThreshold;
     }
 
@@ -50,8 +58,8 @@ class DiskSpaceHealthCheck implements HealthCheckInterface
             return $status;
         }
 
-        $free = @disk_free_space($this->path);
-        $total = @disk_total_space($this->path);
+        $free = $this->fileSystemProvider->getFreeSpace($this->path);
+        $total = $this->fileSystemProvider->getTotalSpace($this->path);
 
         if ($total === false || $free === false) {
             $status = HealthStatusValue::unhealthy("Could not determine disk space for path '{$this->path}'. Check permissions.");
@@ -114,13 +122,14 @@ class DiskSpaceHealthCheck implements HealthCheckInterface
      */
     private function formatBytes(float $bytes): string
     {
-        if ($bytes < 1024) {
-            return $bytes . ' B';
+        if ($bytes <= 0) {
+            return '0 B';
         }
 
         $units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
-        $factor = floor((strlen((string)$bytes) - 1) / 3);
+        $power = floor(log($bytes, 1024));
+        $power = min($power, count($units) - 1);
 
-        return sprintf("%.2f", $bytes / pow(1024, $factor)) . ' ' . @$units[$factor];
+        return sprintf('%.2f', $bytes / pow(1024, $power)) . ' ' . $units[$power];
     }
 }
