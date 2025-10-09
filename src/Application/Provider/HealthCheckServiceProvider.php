@@ -5,6 +5,7 @@ namespace MaintenancePro\Application\Provider;
 
 use MaintenancePro\Application\ServiceContainer;
 use MaintenancePro\Domain\Contracts\CacheInterface;
+use MaintenancePro\Domain\Contracts\HealthCheckInterface;
 use MaintenancePro\Infrastructure\Health\CacheHealthCheck;
 use MaintenancePro\Infrastructure\Health\DatabaseHealthCheck;
 use MaintenancePro\Infrastructure\Health\DiskSpaceHealthCheck;
@@ -29,7 +30,7 @@ class HealthCheckServiceProvider implements ServiceProviderInterface
     {
         $container->singleton(FileSystemProvider::class, fn () => new FileSystemProvider());
 
-        $container->singleton(HealthCheckAggregator::class, function ($c) {
+        $container->singleton(HealthCheckInterface::class, function ($c) {
             $paths = $c->get('paths');
             $aggregator = new HealthCheckAggregator();
             $aggregator->addCheck(new DatabaseHealthCheck($c->get(\PDO::class)));

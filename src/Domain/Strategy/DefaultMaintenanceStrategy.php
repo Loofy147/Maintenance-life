@@ -6,8 +6,8 @@ namespace MaintenancePro\Domain\Strategy;
 use MaintenancePro\Application\Service\AccessControlService;
 use MaintenancePro\Domain\Entity\UserInterface;
 use MaintenancePro\Domain\Contracts\ConfigurationInterface;
-use MaintenancePro\Domain\ValueObject\IPAddress;
-use MaintenancePro\Domain\ValueObject\TimePeriod;
+use MaintenancePro\Domain\ValueObjects\IPAddress;
+use MaintenancePro\Domain\ValueObjects\TimePeriod;
 
 /**
  * A default maintenance strategy that checks for manual overrides and scheduled windows.

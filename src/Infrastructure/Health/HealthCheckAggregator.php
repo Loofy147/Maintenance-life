@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace MaintenancePro\Infrastructure\Health;
 
+use MaintenancePro\Domain\Contracts\HealthCheckInterface as DomainHealthCheckInterface;
+
 /**
  * Aggregates multiple health checks and runs them to determine overall system health.
  *
@@ -10,7 +12,7 @@ namespace MaintenancePro\Infrastructure\Health;
  * It iterates through each registered check, collects its status, and provides a
  * consolidated report.
  */
-class HealthCheckAggregator
+class HealthCheckAggregator implements DomainHealthCheckInterface
 {
     /** @var HealthCheckInterface[] */
     private array $checks = [];
@@ -41,7 +43,7 @@ class HealthCheckAggregator
      *     }>
      * } The aggregated health report.
      */
-    public function runAll(): array
+    public function run(): array
     {
         $results = [];
         $overallHealthy = true;

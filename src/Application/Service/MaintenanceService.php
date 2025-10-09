@@ -6,11 +6,12 @@ namespace MaintenancePro\Application\Service;
 use MaintenancePro\Domain\Entity\MaintenanceSession;
 use MaintenancePro\Domain\Event\MaintenanceDisabledEvent;
 use MaintenancePro\Domain\Event\MaintenanceEnabledEvent;
+use MaintenancePro\Domain\Contracts\MaintenanceServiceInterface;
 use MaintenancePro\Domain\Strategy\MaintenanceStrategyInterface;
-use MaintenancePro\Domain\ValueObject\TimePeriod;
+use MaintenancePro\Domain\ValueObjects\TimePeriod;
 use MaintenancePro\Application\Event\EventDispatcherInterface;
 use MaintenancePro\Domain\Contracts\ConfigurationInterface;
-use MaintenancePro\Infrastructure\Logger\LoggerInterface;
+use MaintenancePro\Application\LoggerInterface;
 
 /**
  * Manages the application's maintenance mode state.
@@ -18,7 +19,7 @@ use MaintenancePro\Infrastructure\Logger\LoggerInterface;
  * This service provides methods to enable and disable maintenance mode, check its
  * status, and determine if incoming requests should be blocked.
  */
-class MaintenanceService
+class MaintenanceService implements MaintenanceServiceInterface
 {
     private ConfigurationInterface $config;
     private EventDispatcherInterface $eventDispatcher;
@@ -70,6 +71,8 @@ class MaintenanceService
         $this->currentSession = $session;
         $this->config->set('maintenance.enabled', true);
         $this->config->set('maintenance.session_id', $session->getId());
+        $this->config->set('maintenance.reason', $reason);
+        $this->config->set('maintenance.scheduled_at', $endTime->format('c'));
         $this->config->save();
 
         $event = new MaintenanceEnabledEvent($session);
@@ -145,5 +148,32 @@ class MaintenanceService
     public function getCurrentSession(): ?MaintenanceSession
     {
         return $this->currentSession;
+    }
+
+    public function getStatus(): array
+    {
+        return [
+            'is_active' => $this->isEnabled(),
+            'reason' => $this->config->get('maintenance.reason'),
+            'scheduled_at' => $this->config->get('maintenance.scheduled_at'),
+        ];
+    }
+
+    public function addWhitelistedIp(string $ip): void
+    {
+        $whitelistedIps = $this->config->get('access.whitelist.ips', []);
+        if (!in_array($ip, $whitelistedIps)) {
+            $whitelistedIps[] = $ip;
+            $this->config->set('access.whitelist.ips', $whitelistedIps);
+            $this->config->save();
+        }
+    }
+
+    public function removeWhitelistedIp(string $ip): void
+    {
+        $whitelistedIps = $this->config->get('access.whitelist.ips', []);
+        $whitelistedIps = array_filter($whitelistedIps, fn($whitelistedIp) => $whitelistedIp !== $ip);
+        $this->config->set('access.whitelist.ips', array_values($whitelistedIps));
+        $this->config->save();
     }
 }
