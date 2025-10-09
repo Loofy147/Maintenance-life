@@ -8,8 +8,10 @@ use MaintenancePro\Application\ServiceContainer;
 /**
  * A simple router for handling HTTP requests.
  *
- * This router matches the request method and path to a registered handler
- * and dispatches the request to the appropriate controller method.
+ * This router matches the request method and path to a registered handler,
+ * supporting dynamic URL parameters (e.g., /users/:id). It dispatches the
+ * request to the appropriate controller method, passing extracted parameters
+ * as arguments.
  */
 class Router
 {
@@ -45,29 +47,36 @@ class Router
     /**
      * Dispatches the current request to the appropriate handler.
      *
-     * If no route matches, it sends a 404 Not Found response.
+     * It matches the request against registered routes, extracts URL parameters,
+     * and calls the corresponding controller method with those parameters.
+     *
+     * @return mixed The response from the handler, or a string for a 404 error.
      */
-    public function dispatch(): void
+    public function dispatch()
     {
         $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
         $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
         foreach ($this->routes as $route) {
-            if ($route['method'] === $requestMethod && $route['path'] === $requestPath) {
-                $controllerClass = $route['handler'][0];
-                $method = $route['handler'][1];
+            // Convert route path to a regex pattern
+            $routePattern = preg_replace('/:(\w+)/', '(?<$1>[^/]+)', $route['path']);
+            $regex = '~^' . $routePattern . '$~';
+
+            // Check if the route matches the request
+            if ($route['method'] === $requestMethod && preg_match($regex, $requestPath, $matches)) {
+                // Filter out numeric keys to get only named parameters
+                $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+
+                [$controllerClass, $method] = $route['handler'];
 
                 $controller = $this->container->get($controllerClass);
-                $response = $controller->$method();
 
-                if (is_string($response)) {
-                    echo $response;
-                }
-                return;
+                // Call the handler with the extracted parameters
+                return $controller->$method(...array_values($params));
             }
         }
 
-        http_response_code(404);
-        echo "<h1>404 Not Found</h1>";
+        // No route matched
+        return null;
     }
 }

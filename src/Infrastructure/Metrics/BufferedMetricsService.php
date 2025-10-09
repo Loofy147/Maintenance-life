@@ -6,103 +6,66 @@ namespace MaintenancePro\Infrastructure\Metrics;
 use MaintenancePro\Domain\Contracts\CacheInterface;
 use MaintenancePro\Domain\Contracts\MetricsInterface;
 
-/**
- * A high-performance, buffered metrics service that batches writes to the cache.
- *
- * This service improves performance by reducing I/O operations. Metrics are collected in an
- * in-memory buffer and flushed to the cache periodically or when the buffer is full.
- */
 class BufferedMetricsService implements MetricsInterface
 {
     private CacheInterface $cache;
     private array $buffer = [];
     private int $bufferSize;
 
-    /**
-     * @param CacheInterface $cache The cache to use for storing metrics.
-     * @param int $bufferSize The number of metrics to buffer before flushing.
-     */
     public function __construct(CacheInterface $cache, int $bufferSize = 50)
     {
         $this->cache = $cache;
         $this->bufferSize = $bufferSize;
     }
 
-    /**
-     * Flushes any remaining metrics in the buffer when the object is destroyed.
-     */
     public function __destruct()
     {
         $this->flush();
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function increment(string $key, int $count = 1, array $tags = []): void
     {
         $this->buffer[] = ['type' => 'increment', 'key' => $key, 'value' => $count, 'tags' => $tags];
         $this->flushIfNeeded();
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function gauge(string $key, float $value, array $tags = []): void
+    public function timing(string $key, float $milliseconds, array $tags = []): void
     {
-        $this->buffer[] = ['type' => 'gauge', 'key' => $key, 'value' => $value, 'tags' => $tags];
+        $this->buffer[] = ['type' => 'timing', 'key' => $key, 'value' => $milliseconds, 'tags' => $tags];
         $this->flushIfNeeded();
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function timing(string $key, float $value, array $tags = []): void
+    public function getSummary(string $range): array
     {
-        $this->buffer[] = ['type' => 'timing', 'key' => $key, 'value' => $value, 'tags' => $tags];
-        $this->flushIfNeeded();
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getMetric(string $metric, array $filters = []): array
-    {
-        $key = $this->buildKey($metric, $filters);
+        $this->flush();
+        // For simplicity, we'll return a subset of the full report for the summary.
+        $report = $this->generateReport();
         return [
-            'metric' => $metric,
-            'value' => $this->cache->get($key, 0),
-            'timestamp' => time()
+            'range' => $range, // In a real app, you'd filter by range
+            'avg_response_time' => $report['metrics']['avg_response_time'],
+            'total_requests' => $report['metrics']['total_requests'],
+            'error_rate' => $report['metrics']['error_rate'],
         ];
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getReport(string $period = 'day'): array
+    public function generateReport(): array
     {
         $this->flush(); // Ensure all buffered metrics are persisted before reporting
         $report = [
-            'period' => $period,
             'timestamp' => time(),
             'metrics' => []
         ];
 
         $report['metrics']['cache_hit_rate'] = $this->calculateCacheHitRate();
         $report['metrics']['avg_response_time'] = $this->getAverageResponseTime();
-        $report['metrics']['total_requests'] = $this->cache->get('metrics:requests.total', 0);
-        $report['metrics']['blocked_requests'] = $this->cache->get('metrics:requests.blocked', 0);
-        $report['metrics']['security_events'] = $this->cache->get('metrics:security.events', 0);
+        $report['metrics']['total_requests'] = (int) $this->cache->get('metrics:requests.total', 0);
+        $report['metrics']['blocked_requests'] = (int) $this->cache->get('metrics:requests.blocked', 0);
+        $report['metrics']['security_events'] = (int) $this->cache->get('metrics:security.events', 0);
         $report['metrics']['error_rate'] = $this->calculateErrorRate();
-
-        $this->storeHistoricalReport($report['metrics']);
 
         return $report;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function flush(): void
     {
         if (empty($this->buffer)) {
@@ -128,22 +91,12 @@ class BufferedMetricsService implements MetricsInterface
         $this->buffer = [];
     }
 
-    /**
-     * Builds a standardized cache key for a given metric and tags.
-     *
-     * @param string               $metric The name of the metric.
-     * @param array<string, mixed> $tags   An array of tags for the metric.
-     * @return string The generated cache key.
-     */
     private function buildKey(string $metric, array $tags): string
     {
         $tagString = empty($tags) ? '' : ':' . http_build_query($tags);
         return "metrics:{$metric}{$tagString}";
     }
 
-    /**
-     * Flushes the buffer to the cache if it has reached its maximum size.
-     */
     private function flushIfNeeded(): void
     {
         if (count($this->buffer) >= $this->bufferSize) {
@@ -151,70 +104,35 @@ class BufferedMetricsService implements MetricsInterface
         }
     }
 
-    /**
-     * Calculates the cache hit rate based on stored hit and miss counts.
-     *
-     * @return float The cache hit rate as a percentage.
-     */
     private function calculateCacheHitRate(): float
     {
         $hits = (int)$this->cache->get($this->buildKey('cache.hits', []), 0);
         $misses = (int)$this->cache->get($this->buildKey('cache.misses', []), 0);
         $total = $hits + $misses;
 
-        return $total > 0 ? ($hits / $total) * 100 : 0;
+        return $total > 0 ? round(($hits / $total) * 100, 2) : 0;
     }
 
-    /**
-     * Calculates the average response time from stored timing data.
-     *
-     * @return float The average response time in milliseconds.
-     */
     private function getAverageResponseTime(): float
     {
         $timings = $this->cache->get($this->buildKey('request.time', []), []);
-        return empty($timings) ? 0 : array_sum($timings) / count($timings);
+        if (empty($timings)) {
+            return 0;
+        }
+        return round(array_sum($timings) / count($timings), 2);
     }
 
-    /**
-     * Calculates the error rate based on stored error and request counts.
-     *
-     * @return float The error rate as a percentage.
-     */
     private function calculateErrorRate(): float
     {
         $errors = (int)$this->cache->get($this->buildKey('errors.total', []), 0);
         $total = (int)$this->cache->get($this->buildKey('requests.total', []), 1); // Avoid division by zero
 
-        return ($errors / $total) * 100;
+        return round(($errors / $total) * 100, 2);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getHistorical(int $limit = 100): array
     {
         $historicalData = $this->cache->get('metrics:historical', []);
         return array_slice($historicalData, 0, $limit);
-    }
-
-    /**
-     * Stores a snapshot of the latest metrics report for historical analysis.
-     *
-     * @param array<string, mixed> $metrics The metrics data to store.
-     */
-    private function storeHistoricalReport(array $metrics): void
-    {
-        $historicalKey = 'metrics:historical';
-        $maxEntries = 200; // Keep a reasonable number of historical entries
-
-        $historicalData = $this->cache->get($historicalKey, []);
-        array_unshift($historicalData, $metrics);
-
-        if (count($historicalData) > $maxEntries) {
-            $historicalData = array_slice($historicalData, 0, $maxEntries);
-        }
-
-        $this->cache->set($historicalKey, $historicalData);
     }
 }

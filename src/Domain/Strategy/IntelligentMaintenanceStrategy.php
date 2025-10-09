@@ -5,8 +5,8 @@ namespace MaintenancePro\Domain\Strategy;
 
 use MaintenancePro\Domain\Contracts\AnomalyDetectorInterface;
 use MaintenancePro\Domain\Contracts\ConfigurationInterface;
+use MaintenancePro\Domain\Contracts\HealthCheckInterface;
 use MaintenancePro\Domain\Contracts\MetricsInterface;
-use MaintenancePro\Infrastructure\Health\HealthCheckAggregator;
 
 /**
  * An intelligent maintenance strategy that automatically triggers maintenance mode
@@ -16,7 +16,7 @@ class IntelligentMaintenanceStrategy implements MaintenanceStrategyInterface
 {
     private ConfigurationInterface $config;
     private MetricsInterface $metrics;
-    private HealthCheckAggregator $healthCheckAggregator;
+    private HealthCheckInterface $healthCheckAggregator;
     private AnomalyDetectorInterface $anomalyDetector;
 
     /**
@@ -24,13 +24,13 @@ class IntelligentMaintenanceStrategy implements MaintenanceStrategyInterface
      *
      * @param ConfigurationInterface   $config                The application configuration.
      * @param MetricsInterface         $metrics               The metrics service for performance data.
-     * @param HealthCheckAggregator    $healthCheckAggregator The health check aggregator for system status.
+     * @param HealthCheckInterface    $healthCheckAggregator The health check aggregator for system status.
      * @param AnomalyDetectorInterface $anomalyDetector       The anomaly detector for identifying issues.
      */
     public function __construct(
         ConfigurationInterface $config,
         MetricsInterface $metrics,
-        HealthCheckAggregator $healthCheckAggregator,
+        HealthCheckInterface $healthCheckAggregator,
         AnomalyDetectorInterface $anomalyDetector
     ) {
         $this->config = $config;
@@ -48,14 +48,14 @@ class IntelligentMaintenanceStrategy implements MaintenanceStrategyInterface
     public function shouldEnterMaintenance(array $context): bool
     {
         // 1. Check system health. If any critical check fails, enter maintenance.
-        $healthReport = $this->healthCheckAggregator->runAll();
+        $healthReport = $this->healthCheckAggregator->run();
         if ($healthReport['status'] === 'unhealthy') {
             return true;
         }
 
         // 2. Check for performance anomalies using the anomaly detector.
         $historicalMetrics = $this->metrics->getHistorical();
-        $currentMetrics = $this->metrics->getReport()['metrics'];
+        $currentMetrics = $this->metrics->generateReport()['metrics'];
 
         // Check for anomalies in error rate
         if (isset($currentMetrics['error_rate'])) {

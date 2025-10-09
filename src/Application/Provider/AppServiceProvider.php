@@ -7,6 +7,7 @@ use MaintenancePro\Application\Event\EventDispatcherInterface;
 use MaintenancePro\Application\LoggerInterface;
 use MaintenancePro\Application\Service\AccessControlService;
 use MaintenancePro\Application\Service\MaintenanceService;
+use MaintenancePro\Domain\Contracts\MaintenanceServiceInterface;
 use MaintenancePro\Application\Service\SecurityService;
 use MaintenancePro\Application\Service\SecurityServiceInterface;
 use MaintenancePro\Application\ServiceContainer;
@@ -105,7 +106,7 @@ class AppServiceProvider implements ServiceProviderInterface
             );
         });
 
-        $container->singleton(MaintenanceService::class, function($c) {
+        $container->singleton(MaintenanceServiceInterface::class, function($c) {
             return new MaintenanceService(
                 $c->get(ConfigurationInterface::class),
                 $c->get(EventDispatcherInterface::class),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace MaintenancePro\Infrastructure\CircuitBreaker;
 
 use MaintenancePro\Domain\Contracts\CacheInterface;
+use MaintenancePro\Domain\Contracts\CircuitBreakerInterface;
 
 /**
  * A cache-based implementation of the CircuitBreakerInterface.
@@ -17,6 +18,8 @@ class CacheableCircuitBreaker implements CircuitBreakerInterface
     private const STATE_CLOSED = 'CLOSED';
     private const STATE_OPEN = 'OPEN';
     private const STATE_HALF_OPEN = 'HALF_OPEN';
+    private const CACHE_PREFIX = 'circuit_breaker.';
+    private const ALL_SERVICES_KEY = self::CACHE_PREFIX . 'all_services';
 
     private CacheInterface $cache;
     private int $failureThreshold;
@@ -41,11 +44,9 @@ class CacheableCircuitBreaker implements CircuitBreakerInterface
         $this->halfOpenTimeout = $halfOpenTimeout;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isAvailable(string $serviceName): bool
     {
+        $this->trackService($serviceName);
         $status = $this->getStatus($serviceName);
 
         if ($status['state'] === self::STATE_OPEN) {
@@ -55,20 +56,14 @@ class CacheableCircuitBreaker implements CircuitBreakerInterface
         return true;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function recordSuccess(string $serviceName): void
     {
-        $this->cache->delete($this->getCacheKey($serviceName, 'failures'));
-        $this->cache->delete($this->getCacheKey($serviceName, 'last_failure'));
+        $this->reset($serviceName);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function recordFailure(string $serviceName): void
     {
+        $this->trackService($serviceName);
         $failuresKey = $this->getCacheKey($serviceName, 'failures');
         $lastFailureKey = $this->getCacheKey($serviceName, 'last_failure');
 
@@ -79,9 +74,6 @@ class CacheableCircuitBreaker implements CircuitBreakerInterface
         $this->cache->set($lastFailureKey, time(), $this->openTimeout * 2);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getStatus(string $serviceName): array
     {
         $failures = (int) $this->cache->get($this->getCacheKey($serviceName, 'failures'), 0);
@@ -104,15 +96,33 @@ class CacheableCircuitBreaker implements CircuitBreakerInterface
         ];
     }
 
-    /**
-     * Generates a unique cache key for a given service and metric.
-     *
-     * @param string $serviceName The name of the service.
-     * @param string $metric The name of the metric (e.g., 'failures', 'last_failure').
-     * @return string The generated cache key.
-     */
+    public function getAllStatuses(): array
+    {
+        $services = $this->cache->get(self::ALL_SERVICES_KEY, []);
+        $statuses = [];
+        foreach ($services as $serviceName) {
+            $statuses[] = $this->getStatus($serviceName);
+        }
+        return $statuses;
+    }
+
+    public function reset(string $service): void
+    {
+        $this->cache->delete($this->getCacheKey($service, 'failures'));
+        $this->cache->delete($this->getCacheKey($service, 'last_failure'));
+    }
+
+    private function trackService(string $serviceName): void
+    {
+        $services = $this->cache->get(self::ALL_SERVICES_KEY, []);
+        if (!in_array($serviceName, $services)) {
+            $services[] = $serviceName;
+            $this->cache->set(self::ALL_SERVICES_KEY, $services);
+        }
+    }
+
     private function getCacheKey(string $serviceName, string $metric): string
     {
-        return "circuit_breaker.{$serviceName}.{$metric}";
+        return self::CACHE_PREFIX . "{$serviceName}.{$metric}";
     }
 }

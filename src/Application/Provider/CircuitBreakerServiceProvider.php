@@ -5,8 +5,8 @@ namespace MaintenancePro\Application\Provider;
 
 use MaintenancePro\Application\ServiceContainer;
 use MaintenancePro\Domain\Contracts\CacheInterface;
+use MaintenancePro\Domain\Contracts\CircuitBreakerInterface;
 use MaintenancePro\Infrastructure\CircuitBreaker\CacheableCircuitBreaker;
-use MaintenancePro\Infrastructure\CircuitBreaker\CircuitBreakerInterface;
 
 /**
  * Registers the Circuit Breaker service.

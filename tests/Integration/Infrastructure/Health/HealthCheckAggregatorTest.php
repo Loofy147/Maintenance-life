@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Tests\Integration\Infrastructure\Health;
 
 use MaintenancePro\Application\Kernel;
+use MaintenancePro\Domain\Contracts\HealthCheckInterface;
 use MaintenancePro\Infrastructure\Health\HealthCheckAggregator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -47,9 +48,9 @@ class HealthCheckAggregatorTest extends TestCase
     #[Test]
     public function it_runs_all_registered_health_checks_and_returns_a_report(): void
     {
-        /** @var HealthCheckAggregator $aggregator */
-        $aggregator = $this->kernel->getContainer()->get(HealthCheckAggregator::class);
-        $report = $aggregator->runAll();
+        /** @var HealthCheckInterface $aggregator */
+        $aggregator = $this->kernel->getContainer()->get(HealthCheckInterface::class);
+        $report = $aggregator->run();
 
         $this->assertArrayHasKey('status', $report);
         $this->assertArrayHasKey('checks', $report);
