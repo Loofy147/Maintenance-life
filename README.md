@@ -20,14 +20,14 @@ MaintenancePro is a professional-grade, enterprise-ready maintenance mode system
 
 ## 🚀 Getting Started
 
-Follow these instructions to get a copy of the project up and running on your local machine for development and testing purposes.
+The recommended way to run MaintenancePro is with Docker. This method provides a consistent and reliable development environment that matches the production setup.
 
 ### Prerequisites
 
-*   PHP 8.1 or greater
-*   Composer
+*   Docker
+*   Docker Compose
 
-### Installation
+### Installation and Setup
 
 1.  **Clone the repository:**
     ```bash
@@ -35,31 +35,26 @@ Follow these instructions to get a copy of the project up and running on your lo
     cd maintenance-pro
     ```
 
-2.  **Install Composer dependencies:**
-    If you don't have Composer installed, you can download it locally:
-    ```bash
-    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-    php composer-setup.php
-    php -r "unlink('composer-setup.php');"
-    ```
-    Then, install the project dependencies:
-    ```bash
-    php composer.phar install
-    ```
-
-3.  **Set up the configuration file:**
+2.  **Set up the configuration file:**
     Copy the example configuration file to create your own local configuration.
     ```bash
     cp config/config.example.json config/config.json
     ```
     You can now edit `config/config.json` to customize your setup (e.g., enable 2FA, set up Slack webhooks). The default admin credentials are `admin` / `password`.
 
-4.  **Run the application:**
-    You can use PHP's built-in web server to run the application locally.
+3.  **Build and run the Docker containers:**
     ```bash
-    php -S localhost:8000 -t public
+    docker-compose up --build -d
     ```
-    The application will be available at `http://localhost:8000`. The admin dashboard is at `http://localhost:8000/admin`.
+
+4.  **Access the application:**
+    The application will be available at `http://localhost:8080`. The admin dashboard is at `http://localhost:8080/admin`.
+
+5.  **Stopping the application:**
+    To stop the application, run:
+    ```bash
+    docker-compose down
+    ```
 
 ## 🏛️ Project Structure
 
