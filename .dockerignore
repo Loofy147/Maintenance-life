@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Development and testing
+.idea/
+.vscode/
+tests/
+benchmarks/
+.phpunit.cache/
+phpunit.xml.dist
+
+# Local dependencies and build artifacts
+vendor/
+node_modules/
+
+# Documentation and miscellaneous
+*.md
+LICENSE
+composer.lock
+composer.phar
+jules-scratch/
+maintenance_script.php (3).txt
+maintenance_script.php (5).txt
